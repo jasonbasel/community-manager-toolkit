@@ -1,0 +1,53 @@
+{
+  "name": "community-manager-toolkit",
+  "version": "0.1.0",
+  "description": "Introductions, event matchmaking and impact reports for community managers.",
+  "author": {
+    "name": "Jason Basel",
+    "email": "jason@communitylab.ai",
+    "url": "https://github.com/jasonbasel"
+  },
+  "homepage": "https://jasonbasel.github.io/community-manager-toolkit/",
+  "repository": "https://github.com/jasonbasel/community-manager-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "community manager",
+    "community management",
+    "member engagement",
+    "networking",
+    "introductions",
+    "warm intros",
+    "event matchmaking",
+    "Luma",
+    "Eventbrite",
+    "onboarding",
+    "re-engagement",
+    "churn",
+    "community ROI",
+    "member experience",
+    "professional network",
+    "association",
+    "alumni",
+    "WhatsApp community"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Community Manager Toolkit",
+    "shortDescription": "Intros, event matching, ROI",
+    "longDescription": "Community Manager Toolkit helps the person running a professional network, association, alumni group, members' club, accelerator cohort or event series do the relationship work that shows value.\n\nFive skills:\n- Event matchmaking: pair attendees from a Luma or Eventbrite guest list or a CSV, with a reason for each pair and a backup for everyone. Produces a host sheet, pre-event \"find [name]\" messages and a morning-after follow-up.\n- Member introductions: consent-first, double opt-in warm intros. Screens out sales pitches, confirms identity, and drafts the consent ask, connection message, lapse notice and follow-up checks.\n- Community impact report: a board- or sponsor-ready report built on outcomes (conversations that happened and how members rated them), with data coverage stated honestly.\n- New member onboarding: a first month built around one named introduction, with day-3, day-14 and day-30 check-ins.\n- Member re-engagement: segment quiet members, pick the right touch for each, check message spacing, and draft a small batch of personal messages instead of a broadcast.\n\nEvery introduction goes into an intro ledger (a Notion database, Google Sheet, Airtable table or CSV file) so follow-ups happen and the impact report has real outcomes to count. The rules and message shapes come from what worked in a real ~850-member professional network.\n\nIt drafts; you decide. You approve every pair and every message, nothing is sent unless you explicitly ask, one message at a time, and it never bulk-sends. It works with the tools you connect, such as Luma, HubSpot, Notion, Airtable, Google Drive, Slack, Gmail or Circle, or with files you upload, including CSV exports and a WhatsApp chat export.\n\nPrivacy: this plugin has no server and stores nothing. Your data stays in your AI assistant and the tools you connect. Reports and the intro ledger never include phone numbers or email addresses. Privacy policy: https://jasonbasel.github.io/community-manager-toolkit/privacy.html",
+    "developerName": "Jason Basel",
+    "category": "Business & Operations",
+    "capabilities": [],
+    "websiteURL": "https://jasonbasel.github.io/community-manager-toolkit/",
+    "supportURL": "https://jasonbasel.github.io/community-manager-toolkit/support.html",
+    "privacyPolicyURL": "https://jasonbasel.github.io/community-manager-toolkit/privacy.html",
+    "termsOfServiceURL": "https://jasonbasel.github.io/community-manager-toolkit/terms.html",
+    "defaultPrompt": [
+      "Match the attendees of my next Luma event",
+      "Help me introduce two members, double opt-in",
+      "Build this quarter's community impact report"
+    ],
+    "logo": "./assets/logo.png",
+    "composerIcon": "./assets/icon.png"
+  }
+}

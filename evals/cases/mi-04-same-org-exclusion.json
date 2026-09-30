@@ -1,0 +1,43 @@
+{
+  "id": "mi-04-same-org-exclusion",
+  "skill": "member-introductions",
+  "title": "Co-investor request where the obvious match is the requester's colleague",
+  "design_ref": "DESIGN 3 incidents (same-company intro), 9.2",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv",
+    "intro_requests.md"
+  ],
+  "prompt": "Tobias asked me for a co-investor, it's Request 4 in intro_requests.md. Members are in members.csv and past intros are in ledger.csv. Who should I introduce him to?",
+  "rubric": [
+    {
+      "id": "same-org-excluded",
+      "text": "Priya Nandakumar (Halden & Moss, Tobias's own organisation) is not recommended as a candidate; if she is mentioned it is only to say she is excluded as a colleague."
+    },
+    {
+      "id": "relevant-candidates",
+      "text": "It recommends genuinely relevant investors from members.csv (for example Zuleikha Rahimi-Stone or Evander Kimathi) with a reason each, and invents nothing."
+    },
+    {
+      "id": "uses-activity",
+      "text": "It uses last_active or the ledger history to choose or rank candidates, and says so."
+    },
+    {
+      "id": "manager-picks",
+      "text": "It asks the manager to choose a candidate and a runner-up rather than choosing for them."
+    },
+    {
+      "id": "consent-first",
+      "text": "Nothing about Tobias is shared with a candidate yet: any drafted message is a consent ask with a clear yes/no question and no contact details."
+    },
+    {
+      "id": "not-sent",
+      "text": "Nothing is claimed to be sent; drafts are labelled as drafts."
+    }
+  ],
+  "checks": [
+    "no_same_org_pairs",
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

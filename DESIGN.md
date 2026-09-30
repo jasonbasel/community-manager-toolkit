@@ -1,0 +1,382 @@
+# Community Manager Toolkit: design spec (v0)
+
+Owner: Jason Basel (private individual). Contact: jason@communitylab.ai. Licence: MIT.
+Status: v0, skills-only, no hosted service. Written 30 Sep 2026.
+
+This file is the source of truth for what the plugin does and why. The skills are built
+from it. It stays in the repo root, outside the plugin folder, so it is not shipped.
+
+---
+
+## 1. What it is
+
+A plugin for Claude and ChatGPT that helps a community manager (a person running a
+professional network, association, alumni group, members' club, accelerator cohort or
+event series) do the relationship work that actually shows value:
+
+1. **Event matchmaking**: pair attendees before an event, with a reason for each pair.
+2. **Member introductions**: consent-first (double opt-in) introductions.
+3. **Community impact report**: a board- or sponsor-ready report built on outcomes, not activity.
+4. **New member onboarding**: a first week built around one named introduction.
+5. **Member re-engagement**: bring quiet members back with a reason to reply.
+
+The plugin holds no data and runs no server. It works with whatever the user has
+connected (Luma, HubSpot, Notion, Airtable, Google Drive/Sheets, Slack, Gmail, Circle,
+Ticket Tailor, RSVPify) or with files the user uploads (CSV exports including Eventbrite's
+attendee report, a WhatsApp chat export). Eventbrite has no official connector on either
+platform (Sep 2026), so its export is the supported path.
+
+**Positioning line (listing):** "The community manager's toolkit for introductions,
+event matchmaking and proving your community's value, built from what worked in a
+real ~850-member professional network."
+
+## 2. Principles every skill follows
+
+1. **Draft, never send on your own.** Every message is a draft. Sending happens only when
+   the user explicitly asks, through a connector that asks for confirmation, or by the
+   user copying the text. Never bulk-send.
+2. **Consent first.** Nobody's contact details or profile go to another person until
+   that person has said yes.
+3. **Outcomes over activity.** Log every introduction and ask later whether it happened.
+   Without that, the impact report has nothing to stand on.
+4. **Data minimisation.** Read only the fields needed (name, organisation, role,
+   location, what they want, what they offer, last active). Don't copy full records
+   into outputs. Never output phone numbers or emails in shareable reports.
+5. **The human stays in charge.** The toolkit proposes; the manager approves each pair
+   and each message. This matters most at small events (under ~150 people), where fully
+   automatic matchmaking is reported to work worst.
+6. **Match the user's language and spelling** in outputs (UK vs US English, tone).
+
+## 3. What worked (evidence, anonymised and rounded)
+
+Source: one ~850-member professional network running a WhatsApp-based member agent,
+June–September 2026. Rounded figures. Skills may cite these as "in one ~850-member
+professional network" and must not name the community.
+
+**Message shape (reply within 7 days, by message type):**
+- "Your intro request lapsed; want me to try someone else?" ~65%
+- "[Named person] asked to meet you, yes or no?" ~63%
+- New member: "meet [named person]" in the first days ~59%
+- "How did your intro with [name] go?" (3 buttons) ~56%
+- Plain welcome message ~47%
+- "Here are people you could meet" (suggestions) ~37%
+- Follow-up on those suggestions ~29%
+- Generic event reminder ~28%
+- One-off broadcast to members never contacted before ~18%
+
+**The pattern:** a named person plus a yes/no decision wins; a feature tour loses.
+Being *wanted* ("someone asked for you", ~63%) beats being *offered* ("people you could
+meet", ~37%). Messages that report a state change the member didn't cause ("your
+request lapsed") get the most replies. Named-person asks got over 3x the replies of
+broadcasts.
+
+**Broadcasts cannibalise.** A one-off broadcast uses up attention that better,
+personal touches needed. Cap proactive touches at roughly one per member per week and
+space them at least ~72 hours apart.
+
+**Intro funnel (~200 requests over ~10 weeks):**
+- ~64% of requests got a yes from the person asked, ~30% lapsed with no answer, ~6% were declined.
+- People who had never engaged lapsed about two-thirds of the time, against about a
+  quarter for members who had engaged before. Never-engaged people caused over a third
+  of all lapses.
+- Of those who answered a follow-up, about half said they hadn't actually connected.
+  Net: roughly **1 request in 3 became a real conversation**.
+- When people did meet, they rated it about **4.7 out of 5**.
+
+**Lessons encoded in the skills:**
+- Prefer responsive introductees; give never-engaged people a short window (~3 days)
+  and keep a runner-up ready.
+- After both say yes, tell the requester to send the first message within a day.
+- Check in ~3 days after the intro ("have you two found a time?"), then ask about the
+  outcome ~10 days after, with three options (Super valuable / It was OK / We didn't
+  connect). If "not yet" or "didn't connect", ask once more a week later.
+- Tell the requester when a request lapses and offer someone else. It's the
+  best-performing message of all.
+- Don't ask the same person for an intro more than about once every two weeks.
+
+**Engagement segments (whole base, one quarter):** ~6% start conversations regularly,
+~18% occasionally, ~19% reply only when nudged, ~42% effectively dark, ~15% never
+contacted. About half of new members became active in their first month; the
+long-tenured, never-engaged base is the hard part.
+
+**Events:** at one party-style event, attendees got a named person to find, ~90 minutes
+before start. ~37% replied (against ~28% for a generic reminder), but only about 30%
+of pre-matched pairs had both people actually turn up. **Registration is not
+attendance.** Give everyone a backup match, and re-pair at the door when you can.
+
+**Incidents that became rules:**
+- *Wrong person introduced*: two members with similar names; the request went to the
+  wrong one. Rule: confirm identity (full name + organisation) before any ask goes out.
+- *Same-company intro*: two colleagues were introduced to each other. Rule: never pair
+  people from the same organisation.
+- *Sensitive attribute*: a pairing message named the other person's organisation, whose
+  name implied a sexual orientation; the recipient took offence. Rule: match reasons
+  come only from professional overlap and stated asks/offers; never mention or infer
+  sexuality, religion, ethnicity, health, disability, politics or similar; when an
+  organisation's name itself signals one of these, describe the organisation neutrally
+  ("a travel company") or leave it out.
+- *Removal request*: a member asked for something they'd shared to be forgotten.
+  Rule: honour removal and opt-out requests immediately and note them in the ledger.
+
+**External context (for the README, not the skills):** CMX's 2026 community report
+(via Bettermode, Aug 2026): proving value is the top frustration (36%) and only 17% can
+put a number on it; 34% of community teams are one person; WhatsApp is the
+second-most-used community platform (~17%).
+
+## 4. Shared references (copied into each skill that needs them)
+
+Single source in `/shared/`; `scripts/sync-shared.sh` copies files into each
+`skills/<name>/references/` so every skill is self-contained (skills must work on their
+own on claude.ai and ChatGPT).
+
+- `message-craft.md`: section 3's message evidence as writing rules, plus templates
+  for: consent ask, requester update, double-opt-in connection message, lapse notice,
+  follow-through check, outcome check, recheck, welcome with named intro, re-engagement
+  ask. Each template is under ~500 characters (WhatsApp templates cap at 1,024), with
+  variables in [square brackets], one clear yes/no or 3-option question, no feature tour.
+- `guardrails.md`: the rules from sections 2 and 3 (consent, identity confirmation,
+  same-org exclusion, sensitive attributes, cooldowns, spacing, data minimisation,
+  removal requests, sales-intent screen, never auto-send, no cold messages to people
+  who haven't opted into the community's communications).
+- `ledger.md`: the intro ledger schema (section 5) and how to create it in Notion,
+  Google Sheets, Airtable or as a CSV.
+- `data-sources.md`: how to get member and attendee data from each connector or file,
+  the minimum fields, and how to handle gaps (ask the manager; never invent profile
+  facts).
+
+## 5. The intro ledger
+
+One table, kept wherever the user keeps things. Preference order: Notion database (if
+the Notion connector is available), Google Sheet (Drive connector), Airtable, else a
+CSV the user downloads and re-uploads next time.
+
+Columns:
+
+| Column | Type | Notes |
+|---|---|---|
+| intro_id | text | `YYYYMMDD-seeker-target` slug |
+| created | date | |
+| source | select | request / event / onboarding / re-engagement |
+| event | text | event name, if source = event |
+| requester | text | name |
+| requester_org | text | |
+| target | text | name |
+| target_org | text | |
+| reason | text | one line, professional overlap only |
+| status | select | proposed / asked / accepted / declined / lapsed / connected / withdrawn |
+| asked_on | date | |
+| answered_on | date | |
+| connected_on | date | |
+| outcome | select | super valuable / ok / didn't connect / unknown |
+| rating | number | 1–5, optional |
+| next_check | date | drives follow-ups |
+| notes | text | removal/opt-out requests noted here |
+
+No phone numbers or emails in the ledger. Contact details stay in the source system.
+
+## 6. Skills
+
+Each skill: `skills/<name>/SKILL.md` + `references/`. Descriptions are written for
+triggering and search. Lead with the job, include the words people type
+("community manager", "networking", "introductions", "matchmaking", "Luma",
+"member engagement", "onboarding", "churn", "ROI", "report").
+
+### 6.1 `event-matchmaking`
+
+**Triggers:** pair/match attendees, networking at an event, who should meet whom,
+icebreakers, seating, "match hunt", Luma/Eventbrite guest list, pre-event emails,
+post-event follow-up.
+
+**Inputs:** a Luma event (via the Luma connector: guest list + registration answers), an
+Eventbrite attendee report export (CSV/XLSX; carries check-in status), or any uploaded
+guest list CSV, plus member profiles if available (section 4 data sources).
+
+**Workflow:**
+1. Identify the event; pull approved/going guests only (Luma guest pages hold 50;
+   page through all of them).
+2. Build a mini-profile per guest: org, role, what they want, what they offer, from
+   registration answers + member records. Mark guests with too little data; don't
+   invent.
+3. Score pairs: complementary asks↔offers both ways first, then shared professional
+   context. Exclude same-organisation pairs and any pair the manager says have met.
+   Each guest gets 1 primary match + 1 backup; aim for nobody left out; allow a trio
+   when numbers are odd. Cap at 3 introductions per person.
+4. Write one reason line per pair (professional overlap only, section 3 sensitive
+   rule), then show the manager a table to approve/edit/remove before anything else.
+5. Produce, on request:
+   - host sheet (who to introduce at the door, top 5 "connectors" in the room);
+   - per-attendee message drafts ("find [name], [reason]"), to go out ~60–90 min
+     before start, each with the backup named;
+   - a Luma blast draft or email drafts (never sent without the manager's explicit go);
+   - a morning-after follow-up draft ("did you find [name]?") and ledger rows with
+     source = event.
+6. Remind the manager: registration ≠ attendance; re-pair at check-in if possible.
+
+**Evidence to cite:** section 3 "Events".
+
+### 6.2 `member-introductions`
+
+**Triggers:** introduce two members, warm intro, double opt-in intro, "who in my
+community could help X", intro request from WhatsApp/Slack/email, matchmaking,
+connection requests, follow up on intros.
+
+**Inputs:** the request (pasted text, a Slack/Gmail message, a WhatsApp export) +
+member data.
+
+**Workflow:**
+1. Understand the ask: what the requester wants, why, and how specific. If it is a pure
+   sales pitch, say so and suggest the manager handle it differently (sales-intent
+   screen).
+2. Find 3 candidates from member data: fit to the ask, responsiveness (last active),
+   not the same org, not asked in the last ~2 weeks. Show why for each. Flag similar
+   names and confirm identity before continuing.
+3. Manager picks one (plus a runner-up).
+4. Draft the consent ask to the target: named requester, one-line context, clear yes/no,
+   no contact details shared yet.
+5. On yes: draft the connection message to both (or an email intro), telling the
+   requester to send the first message within a day. On no or silence after ~3 days
+   (shorter for never-engaged people): draft the lapse notice to the requester and move
+   to the runner-up.
+6. Log every step in the ledger; set next_check (+3 days follow-through, +10 days
+   outcome check, +7 days recheck if needed).
+7. "Follow up on my intros" mode: read the ledger, list what's due, draft the check-ins.
+
+**Evidence to cite:** section 3 "Message shape", "Intro funnel", "Lessons".
+
+### 6.3 `community-impact-report`
+
+**Triggers:** community ROI, prove community value, board report, sponsor report,
+community health, monthly/quarterly community metrics, member engagement report.
+
+**Inputs:** the ledger, event data (Luma: registrations, check-ins), member list with
+join dates and last active, optional quotes.
+
+**Workflow:**
+1. Ask the period and the audience (board, sponsors, members, leadership).
+2. Compute: intros requested → accepted → connected, outcome mix and average rating,
+   lapse rate; events: registered → attended, pairs made, pairs met; new-member
+   activation (share of new members active within 30 days); engagement segments if
+   data allows.
+3. Compare with the reference figures (section 3), labelled as one network's figures,
+   not a norm.
+4. Write a one-page report: lead with outcomes (conversations that happened, rating),
+   then 2–3 short stories (only with the member's permission, or anonymised), then
+   activity, then what's next. State data coverage honestly (e.g. "outcome known for
+   40% of intros").
+5. Offer the format the audience needs: doc, slide outline, email, or a table.
+
+**Never** include phone numbers or emails; name members only if the manager confirms
+they're happy to be named.
+
+### 6.4 `new-member-onboarding`
+
+**Triggers:** welcome new members, onboarding sequence, first 30 days, member
+activation, introduce new members.
+
+**Workflow:**
+1. Get the new member's profile (or draft 3 questions to collect: what they want from
+   the community, what they can help with, what they're working on).
+2. Find one named person to introduce in the first days (member-introductions logic,
+   same guardrails), and one relevant upcoming event.
+3. Draft: welcome message built around the named intro (not a feature tour); day-3
+   check; day-14 "anything you're looking for?"; day-30 check-in. Each message stands
+   alone, one question each.
+4. Add ledger rows (source = onboarding).
+
+**Evidence to cite:** named intro ~59% vs plain welcome ~47%; about half of new members
+active in month one.
+
+### 6.5 `member-re-engagement`
+
+**Triggers:** quiet members, dormant members, lapsed members, churn risk, re-engage,
+win back, reactivation campaign, inactive members.
+
+**Workflow:**
+1. Segment the base with whatever activity data exists: regular, occasional, nudge-only,
+   dark, never contacted (section 3 segments). Say what data was used and what's missing.
+2. For each segment, recommend the touch: dark members respond to being wanted (a
+   named person asking for them) rather than to broadcasts; never-contacted members
+   first need a profile ask; nudge-only members get a specific person or event.
+3. Pick a small batch (the manager sets the size), check spacing (no proactive touch
+   in the last ~7 days, none queued), draft personal messages.
+4. Warn when the plan is really a broadcast, and explain the cost (section 3 "Broadcasts
+   cannibalise").
+5. Log re-engagement intros in the ledger (source = re-engagement).
+
+## 7. Packaging (one repo, both directories)
+
+No `commands/`: Anthropic migrated its role plugins to skills (Mar 2026), skills appear
+in the `/` menu on claude.ai, and OpenAI requires commands converted to skills anyway.
+
+```
+repo/
+├── DESIGN.md, README.md (GitHub/SEO), LICENSE
+├── shared/                       single source for references/ files
+├── scripts/  sync-shared.sh · build-openai-zip.sh · check.sh
+├── evals/    fixtures/ · cases/ · run + grade scripts · results/ (gitignored)
+├── docs/     GitHub Pages: index, privacy, terms, support
+└── plugin/                       Claude "plugin path"; source of the OpenAI ZIP
+    ├── .claude-plugin/plugin.json   name, displayName, version, description, author{name,email,url}, homepage, repository, license, keywords
+    ├── .codex-plugin/plugin.json    same identity + "skills": "./skills/" + interface{displayName ≤30, shortDescription ≤30, longDescription, category "Business & Operations", defaultPrompt ×3 ≤128, logo, composerIcon}, keywords
+    ├── .mcp.json                    Claude only (excluded from the OpenAI ZIP): Luma https://mcp.luma.com/ · Notion https://mcp.notion.com/mcp · HubSpot https://mcp.hubspot.com/anthropic · Slack https://mcp.slack.com/mcp · Google Drive ""
+    ├── CONNECTORS.md, README.md (listing text, ≥40 words, says what data goes where), LICENSE
+    ├── assets/  logo.png · icon.png (square, ≥512px)
+    └── skills/<name>/SKILL.md + references/
+```
+
+Portability rules for skill files:
+- Front matter: `name` and `description` only. Description ≤1,024 characters, trigger
+  words first.
+- Never write "Claude" or "ChatGPT" in skill text; say "you" or "the assistant".
+- Name connectors in plain words ("if a Luma connection is available…"), never `~~placeholders`.
+- SKILL.md body under ~1,500 words; detail goes in `references/`.
+- No file over 256 KiB; no binaries except the PNG assets; no `.DS_Store`.
+- `community-manager-toolkit:<skill>` must be ≤64 characters.
+
+Naming risk: Claude holds names made only of generic words for a reviewer, and OpenAI
+discourages generic names. The slug is permanent once submitted, so Jason confirms it
+before submission.
+
+## 8. Listing copy (both directories)
+
+- Display name: **Community Manager Toolkit** (25 chars; fits OpenAI's 30)
+- Slug: `community-manager-toolkit`
+- Description (Claude plugin.json): "Introductions, event matchmaking and impact reports for community managers."
+- OpenAI shortDescription (≤30 chars): "Intros, event matching, ROI"
+- OpenAI defaultPrompt ×3 (≤128 chars each): "Match the attendees of my next Luma event",
+  "Help me introduce two members, double opt-in", "Build this quarter's community impact report"
+- Keywords: community manager, community management, member engagement, networking,
+  introductions, warm intros, event matchmaking, Luma, onboarding, re-engagement,
+  churn, community ROI, member experience, professional network, association, alumni,
+  WhatsApp community.
+- Category: productivity / business (whatever each directory offers closest to "operations").
+
+## 9. Evals (definition of done)
+
+Synthetic fixtures only (`evals/fixtures/`): never real member data.
+
+- `members.csv`: 60 fictional members with org, role, city, asks, offers, last_active,
+  joined. Includes: two pairs at the same org; two members with near-identical names
+  (e.g. "Sam Patel" and "Samantha Patel") at different orgs; one member at an
+  organisation whose name implies a sensitive attribute; 10 never-active members; 8
+  joined in the last 30 days.
+- `event_guests.csv`: 35 guests for a fictional event (28 members, 7 non-members, some
+  with thin registration answers, odd total).
+- `intro_requests.md`: 5 requests, including one pure sales pitch and one naming a
+  member ambiguously ("Sam Patel from fintech").
+- `ledger.csv`: 40 historic intros across statuses and outcomes for the report.
+
+Checks (scripted where possible; LLM-judged against a rubric otherwise):
+1. Event matchmaking: no same-org pairs; everyone with enough data gets a primary +
+   backup; no reason mentions a sensitive attribute; the sensitive-named org is
+   described neutrally or omitted; manager approval is requested before drafts; no
+   message is "sent".
+2. Introductions: sales pitch flagged; ambiguous name triggers identity confirmation;
+   consent ask contains no contact details; ledger rows produced with next_check dates.
+3. Impact report: numbers match the fixture ledger exactly; coverage stated; no emails
+   or phones; reference figures labelled as one network's.
+4. Onboarding: welcome built around a named person; same-org excluded.
+5. Re-engagement: segments computed; spacing rule applied; broadcast warning appears
+   when asked to "message all inactive members".
+6. With-vs-without comparison: the same prompts run with and without the plugin; the
+   plugin must win on the rubric for each skill.

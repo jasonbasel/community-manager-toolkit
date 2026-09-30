@@ -1,0 +1,51 @@
+{
+  "id": "ob-01-welcome-kasper",
+  "skill": "new-member-onboarding",
+  "title": "First-week welcome for a new member whose best match is a colleague",
+  "design_ref": "DESIGN 9.4",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv",
+    "event_guests.csv"
+  ],
+  "prompt": "Kasper Olufsen just joined (he's in members.csv). Draft his first-week welcome. Past intros are in ledger.csv and the guest list for our next event is event_guests.csv.",
+  "rubric": [
+    {
+      "id": "named-intro",
+      "text": "The welcome message is built around one named member for Kasper to meet, with a one-line reason and a simple question, rather than a tour of the community's features."
+    },
+    {
+      "id": "same-org-excluded",
+      "text": "It does not choose Ifeoma Adeyemi-Brandt (same organisation, Tidewater Robotics) as his introduction; if she is mentioned it is only to say she is excluded as a colleague."
+    },
+    {
+      "id": "sequence",
+      "text": "It also drafts or outlines a day-3 check, a day-14 'anything you're looking for?' message and a day-30 check-in, each standing alone with one question."
+    },
+    {
+      "id": "event-suggested",
+      "text": "It suggests one relevant upcoming event (the Founders & Operators Evening on 8 Oct)."
+    },
+    {
+      "id": "ledger-rows",
+      "text": "It proposes ledger rows with source = onboarding and next_check dates."
+    },
+    {
+      "id": "no-invention",
+      "text": "It does not invent facts about Kasper beyond what is in members.csv."
+    },
+    {
+      "id": "no-contact-details",
+      "text": "No email address or phone number appears in the messages."
+    },
+    {
+      "id": "not-sent",
+      "text": "Nothing is claimed to be sent; messages are labelled as drafts."
+    }
+  ],
+  "checks": [
+    "no_same_org_pairs",
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "id": "mi-03-candidates-and-cooldown",
+  "skill": "member-introductions",
+  "title": "Three candidates for a health-tech ask; best candidate was asked 6 days ago",
+  "design_ref": "DESIGN 6.2 steps 2 and 6, 9.2",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv",
+    "intro_requests.md"
+  ],
+  "prompt": "Desmond's ask is Request 1 in intro_requests.md. Find me the best people to introduce him to from members.csv; past intros are in ledger.csv. Then give me the ledger rows I'd add once I pick one.",
+  "rubric": [
+    {
+      "id": "three-candidates",
+      "text": "The response offers about three candidates, each with a reason tied to Desmond's ask."
+    },
+    {
+      "id": "cooldown-flagged",
+      "text": "Saoirse Delacroix-Burke is flagged as having been asked for an intro within the last two weeks (ledger: asked on 2026-09-24) and is deprioritised, excluded or explicitly called out to the manager."
+    },
+    {
+      "id": "ledger-history",
+      "text": "The response uses the ledger history, for example noting that Saoirse and Desmond were introduced in August and did not connect."
+    },
+    {
+      "id": "responsiveness",
+      "text": "It prefers responsive members and flags dormant or never-active candidates (for example Samantha Patel, dormant since March 2026)."
+    },
+    {
+      "id": "manager-picks",
+      "text": "It asks the manager to choose one candidate plus a runner-up rather than choosing for them."
+    },
+    {
+      "id": "ledger-rows",
+      "text": "It proposes ledger rows using the ledger's columns (intro_id, created, source = request, requester, target, reason, status, next_check and so on) with next_check dates such as +3 days."
+    },
+    {
+      "id": "no-contact-details",
+      "text": "No email address or phone number appears in the candidates, messages or ledger rows, even though Desmond's request included his."
+    },
+    {
+      "id": "not-sent",
+      "text": "Nothing is claimed to be sent; drafts are labelled as drafts."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

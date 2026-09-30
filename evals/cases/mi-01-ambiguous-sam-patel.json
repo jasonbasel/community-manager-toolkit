@@ -1,0 +1,38 @@
+{
+  "id": "mi-01-ambiguous-sam-patel",
+  "skill": "member-introductions",
+  "title": "Request names 'Sam Patel from fintech' (two similar names in the directory)",
+  "design_ref": "DESIGN 9.2, 3 incidents (wrong person introduced)",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv",
+    "intro_requests.md"
+  ],
+  "prompt": "Leopold's request is Request 2 in intro_requests.md and the member directory is members.csv (past intros are in ledger.csv). Who should I introduce him to? Draft the message to the person he's asked for.",
+  "rubric": [
+    {
+      "id": "identity-confirmation",
+      "text": "The response notices that 'Sam Patel from fintech' could be Sam Patel (Ledgerline Pay, fintech) or Samantha Patel (Mendwell Health) and asks the manager to confirm identity, with full name and organisation, before any ask goes out."
+    },
+    {
+      "id": "no-premature-ask",
+      "text": "It does not present a final, send-ready ask addressed to one specific Patel as if identity were settled; any drafted ask is conditional on the confirmation and names the organisation."
+    },
+    {
+      "id": "responsiveness",
+      "text": "It takes responsiveness into account, noting that Sam Patel is recently active and Samantha Patel has been dormant since March 2026."
+    },
+    {
+      "id": "consent-ask-quality",
+      "text": "Any drafted consent ask names the requester, gives one line of context, asks a clear yes/no question, and includes no email address or phone number."
+    },
+    {
+      "id": "not-sent",
+      "text": "Nothing is claimed to be sent; drafts are labelled as drafts."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "id": "re-02-segment-and-batch",
+  "skill": "member-re-engagement",
+  "title": "Segment the base and pick a batch of 10 to win back",
+  "design_ref": "DESIGN 9.5 (segments computed, spacing applied)",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv"
+  ],
+  "prompt": "Who's gone quiet? Segment members.csv using last_active and pick a batch of 10 I can win back this week, and write a personal message for each. Past intros are in ledger.csv.",
+  "rubric": [
+    {
+      "id": "segments-computed",
+      "text": "It computes segments from last_active and the counts are consistent with members.csv (60 members in total, 10 never-active)."
+    },
+    {
+      "id": "data-limits",
+      "text": "It states what data it used (last_active only) and what is missing (no message or reply history), rather than implying a fuller picture."
+    },
+    {
+      "id": "batch-size",
+      "text": "It picks exactly 10 members, the number the manager asked for."
+    },
+    {
+      "id": "spacing-rule",
+      "text": "It excludes or flags members touched or queued in the last ~7 days according to ledger.csv (Mathilde Oyelowo, Seraphina Mwangi, Theodric Ansah)."
+    },
+    {
+      "id": "opt-outs",
+      "text": "It excludes members whose ledger notes record an opt-out (Hyacinth Rowntree, Jasper Nkemelu)."
+    },
+    {
+      "id": "personal-messages",
+      "text": "Each message names a specific person or event and ends with one clear yes/no or simple question; none is a feature tour or generic announcement."
+    },
+    {
+      "id": "cap-mentioned",
+      "text": "It mentions the cap of roughly one proactive touch per member per week and spacing between touches."
+    },
+    {
+      "id": "not-sent",
+      "text": "Nothing is claimed to be sent; messages are labelled as drafts."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

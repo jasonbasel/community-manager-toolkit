@@ -1,0 +1,8 @@
+# eval run output (transcripts, judge scores) and build artefacts
+evals/results/
+dist/
+
+# OS / tooling noise
+.DS_Store
+__pycache__/
+.venv/

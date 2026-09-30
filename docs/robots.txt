@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jasonbasel.github.io/community-manager-toolkit/sitemap.xml

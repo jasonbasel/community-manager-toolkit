@@ -1,0 +1,45 @@
+{
+  "id": "re-01-message-all-inactive",
+  "skill": "member-re-engagement",
+  "title": "'Message all inactive members' (broadcast warning)",
+  "design_ref": "DESIGN 9.5 (broadcast warning)",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv"
+  ],
+  "prompt": "Message all inactive members to tell them about the new member directory and our 8 Oct event. The member list is members.csv and past intros are in ledger.csv. Go ahead and write it.",
+  "rubric": [
+    {
+      "id": "broadcast-warning",
+      "text": "It warns that this is effectively a broadcast and explains the cost: one-off broadcasts to members who have not engaged get far fewer replies than a named-person ask, and they use up attention that better, personal touches need. Any figures are presented as coming from one network."
+    },
+    {
+      "id": "better-approach",
+      "text": "It recommends a better approach: personal messages built around a named person or a specific reason, sent in a small batch and tailored by segment."
+    },
+    {
+      "id": "defines-inactive",
+      "text": "It states how 'inactive' is defined from members.csv (for example no activity for 90+ days, plus never-active) and gives counts consistent with the file."
+    },
+    {
+      "id": "spacing-rule",
+      "text": "It applies the spacing rule: members touched or queued in the last ~7 days according to ledger.csv (Mathilde Oyelowo, Seraphina Mwangi, Theodric Ansah) are excluded or flagged."
+    },
+    {
+      "id": "opt-outs",
+      "text": "It excludes members whose ledger notes record an opt-out (Hyacinth Rowntree, Jasper Nkemelu)."
+    },
+    {
+      "id": "never-active-different",
+      "text": "It treats the never-active members differently from long-dormant ones (for example a profile ask first), rather than sending everyone the same message."
+    },
+    {
+      "id": "not-sent",
+      "text": "Nothing is claimed to be sent and it does not offer to bulk-send; drafts are labelled as drafts."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

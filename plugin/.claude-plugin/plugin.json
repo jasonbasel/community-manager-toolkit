@@ -1,0 +1,34 @@
+{
+  "name": "community-manager-toolkit",
+  "displayName": "Community Manager Toolkit",
+  "version": "0.1.0",
+  "description": "Introductions, event matchmaking and impact reports for community managers.",
+  "author": {
+    "name": "Jason Basel",
+    "email": "jason@communitylab.ai",
+    "url": "https://github.com/jasonbasel"
+  },
+  "homepage": "https://jasonbasel.github.io/community-manager-toolkit/",
+  "repository": "https://github.com/jasonbasel/community-manager-toolkit",
+  "license": "MIT",
+  "keywords": [
+    "community manager",
+    "community management",
+    "member engagement",
+    "networking",
+    "introductions",
+    "warm intros",
+    "event matchmaking",
+    "Luma",
+    "Eventbrite",
+    "onboarding",
+    "re-engagement",
+    "churn",
+    "community ROI",
+    "member experience",
+    "professional network",
+    "association",
+    "alumni",
+    "WhatsApp community"
+  ]
+}

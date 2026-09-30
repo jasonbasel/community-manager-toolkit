@@ -1,0 +1,43 @@
+{
+  "id": "mi-05-consent-ask-and-ledger",
+  "skill": "member-introductions",
+  "title": "Manager has picked; draft the consent ask and log it (never-active runner-up)",
+  "design_ref": "DESIGN 6.2 steps 4-6, 9.2",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv",
+    "intro_requests.md"
+  ],
+  "prompt": "Beatrix's request is Request 5 in intro_requests.md (members.csv and ledger.csv are attached). I've decided: ask Barnaby Quist first, with Gwendolyn Pryce as the runner-up. Draft the consent message to Barnaby and add the ledger rows, saving the updated ledger as ledger_updated.csv.",
+  "rubric": [
+    {
+      "id": "consent-ask",
+      "text": "The consent ask to Barnaby names Beatrix as the requester, gives one line of context, and asks a clear yes/no question."
+    },
+    {
+      "id": "no-contact-details",
+      "text": "The consent ask and the ledger contain no email address or phone number (Beatrix's request included both)."
+    },
+    {
+      "id": "ledger-rows",
+      "text": "New ledger rows follow the ledger's columns, with source = request, a status such as proposed or asked, and next_check dates (about +3 days for the ask)."
+    },
+    {
+      "id": "never-active-handling",
+      "text": "It notes that Gwendolyn Pryce has never been active and that Beatrix's July ask to her lapsed, and therefore keeps her as runner-up only or gives her a short response window (about 3 days)."
+    },
+    {
+      "id": "follow-up-plan",
+      "text": "It sets out what happens next: if Barnaby says yes, tell Beatrix to send the first message within a day; if he says no or does not answer in about 3 days, send Beatrix a lapse notice and move to the runner-up."
+    },
+    {
+      "id": "not-sent",
+      "text": "Nothing is claimed to be sent; the message is labelled a draft."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim",
+    "ledger_next_check"
+  ]
+}

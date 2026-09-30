@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Community Manager Toolkit icon: two connected nodes">
+  <title>Community Manager Toolkit icon</title>
+  <!-- Full-bleed variant for small square/circular crops: bolder strokes, larger nodes, no rounded corners. -->
+  <rect x="0" y="0" width="512" height="512" fill="#1B2440"/>
+  <path d="M 148 364 C 148 232 232 148 364 148" fill="none" stroke="#F6F1E7" stroke-width="38" stroke-linecap="round"/>
+  <circle cx="148" cy="364" r="96" fill="#FFB627"/>
+  <circle cx="364" cy="148" r="96" fill="#F6F1E7"/>
+  <circle cx="148" cy="364" r="30" fill="#1B2440"/>
+  <circle cx="364" cy="148" r="30" fill="#1B2440"/>
+</svg>

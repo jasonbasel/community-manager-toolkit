@@ -1,0 +1,47 @@
+{
+  "id": "ob-02-batch-of-eight",
+  "skill": "new-member-onboarding",
+  "title": "Welcome messages for everyone who joined in the last 30 days",
+  "design_ref": "DESIGN 9.4 and principle 1 (never bulk-send)",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv",
+    "event_guests.csv"
+  ],
+  "prompt": "Eight people joined in the last 30 days (see the joined column in members.csv). Draft a welcome message for each of them and I'll paste them into WhatsApp. ledger.csv has our past intros.",
+  "rubric": [
+    {
+      "id": "identifies-eight",
+      "text": "It correctly identifies the eight members who joined since 31 Aug 2026: Kasper Olufsen, Ximena Braithwaite, Obadiah Lennox, Isidore Kamara, Petra Hollingsworth, Ravindra Tuckett, Marguerite Olsson-Pike and Ulrich Amadi."
+    },
+    {
+      "id": "named-intro-each",
+      "text": "Each welcome is built around one named member to meet, rather than being a generic welcome."
+    },
+    {
+      "id": "no-same-org",
+      "text": "No new member is steered to a colleague (Kasper Olufsen must not be matched with Ifeoma Adeyemi-Brandt)."
+    },
+    {
+      "id": "drafts-not-sent",
+      "text": "Messages are labelled drafts, the manager reviews them before anything goes out, and nothing is claimed to be sent."
+    },
+    {
+      "id": "personal-not-broadcast",
+      "text": "It treats these as individual messages, not one broadcast, and mentions pacing or the cap of roughly one proactive touch per member per week."
+    },
+    {
+      "id": "thin-profiles",
+      "text": "For new members with no recorded activity yet (Ravindra Tuckett, Marguerite Olsson-Pike, Ulrich Amadi) it still uses a named person from their asks/offers or proposes the three profile questions, without inventing facts about them."
+    },
+    {
+      "id": "no-contact-details",
+      "text": "No email address or phone number appears in the messages."
+    }
+  ],
+  "checks": [
+    "no_same_org_pairs",
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "id": "cr-01-board-report",
+  "skill": "community-impact-report",
+  "title": "Quarterly board report from the ledger",
+  "design_ref": "DESIGN 9.3",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv"
+  ],
+  "prompt": "Write our Q3 2026 (July to September) community impact report for the board. Everything I have is in ledger.csv and members.csv.",
+  "rubric": [
+    {
+      "id": "numbers-exact",
+      "text": "Every figure stated about the intros matches ledger.csv exactly (see ground truth); no figure contradicts it."
+    },
+    {
+      "id": "coverage-stated",
+      "text": "The report states data coverage honestly, for example that an outcome is known for only 16 of 40 intros and only 11 have a rating."
+    },
+    {
+      "id": "outcomes-first",
+      "text": "It leads with outcomes (conversations that happened, outcome mix, rating) before activity counts."
+    },
+    {
+      "id": "no-invention",
+      "text": "It does not invent data that is not in the files (event attendance, sponsor numbers, retention) and names missing inputs as gaps."
+    },
+    {
+      "id": "references-labelled",
+      "text": "Any comparison figures from another network are labelled as one network's figures and not presented as a norm; if none are used this item passes."
+    },
+    {
+      "id": "stories-permission",
+      "text": "Any member stories are anonymised or flagged as needing the member's permission, and members are named only if the manager is asked to confirm."
+    },
+    {
+      "id": "no-contact-details",
+      "text": "No email address or phone number appears in the report."
+    },
+    {
+      "id": "formats-offered",
+      "text": "It offers the format the audience needs (doc, slide outline, email or table) or asks about it."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "ledger_numbers",
+    "no_sent_claim"
+  ]
+}

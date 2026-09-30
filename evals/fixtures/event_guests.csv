@@ -1,0 +1,36 @@
+name,email,phone,company,job_title,hope_to_get,can_offer,registered_at,approval_status
+Kasper Olufsen,kasper.olufsen@example.com,07700 900104,Tidewater Robotics,Head of Engineering,Firmware engineers; someone who has been through safety certification,Embedded systems mentoring,2026-09-22,approved
+Saoirse Delacroix-Burke,saoirse.delacroix-burke@example.com,07700 900115,Marlowe Health Partners,Clinical Director,Digital health founders needing clinical validation,Clinical trial design; NHS pathways,2026-09-17,approved
+Emeka Varga-Lowe,emeka.varga-lowe@example.com,07700 900129,Lowe & Varga Data,Consultant,Clients in fintech,Data pipeline builds; dashboard design,2026-09-23,approved
+Dominic Achterberg,dominic.achterberg@example.com,07700 900105,Out & Proud Travel Co,Founder,Airline or hotel partnership leads; an angel investor,Travel distribution know-how,2026-09-19,approved
+Evander Kimathi,evander.kimathi@example.com,07700 900123,Redwood Impact Fund,Investment Manager,Climate and health founders at seed stage,Impact measurement; co-investment,2026-09-21,approved
+Reshma Kowalczyk,reshma.kowalczyk@example.com,07700 900110,Brightharbour Legal,Partner,Startups needing commercial contracts,GDPR reviews; contract templates,2026-09-19,approved
+Odalys Fenwick,odalys.fenwick@example.com,07700 900114,Loomstead Education,CEO,School leaders open to pilots; edtech investors,Curriculum design; teacher network,2026-09-26,approved
+Lorcan Featherstone,lorcan.featherstone@example.com,07700 900132,Cedar Row Investments,Angel Investor,Seed-stage deals in climate or agritech,Angel cheques of 25-50k pounds,2026-09-21,approved
+Esme Thackeray,esme.thackeray@example.com,07700 900112,Pennywhistle Foods,Founder,Supermarket buyers; packaging suppliers,Scaling a food startup; supplier negotiation,2026-09-24,approved
+Ximena Braithwaite,ximena.braithwaite@example.com,07700 900127,Fieldstone Data,Data Scientist,,,2026-09-28,approved
+Beatrix Halloran,beatrix.halloran@example.com,07700 900121,Anvil & Thread,Founder,UK manufacturers for small production runs,Ethical sourcing know-how,2026-09-24,approved
+Constance Ridley,constance.ridley@example.com,07700 900133,Ridley Partners,Director,networking,,2026-09-27,approved
+Sam Patel,sam.patel@example.com,07700 900100,Ledgerline Pay,Head of Partnerships,Meet interesting people,,2026-09-18,approved
+Lachlan Devereux,lachlan.devereux@example.com,07700 900122,Marrowfield Agritech,Founder,Seed investors who back agritech; agronomists,Crop sensor data,2026-09-19,approved
+Linnea Vasquez-Holt,linnea.vasquez-holt@example.com,07700 900108,Copperwing Talent,Director,Startups about to scale their hiring,Hiring plans and salary benchmarking,2026-09-21,approved
+Ottilie Brannigan,ottilie.brannigan@example.com,07700 900128,Brannigan Ceramics,Founder,Retail stockists; advice on making a first hire,The story of scaling a craft manufacturing business,2026-09-20,approved
+Wendell Okonkwo-Hale,wendell.okonkwo-hale@example.com,07700 900107,Brackenridge Capital,Principal,Fintech infrastructure deal flow,Seed funding; board experience,2026-09-20,approved
+Hamish Ogunleye,hamish.ogunleye@example.com,07700 900134,,Founder,meet people,n/a,2026-09-28,approved
+Clementine Abara,clementine.abara@example.com,07700 900119,Hollowbrook Cyber,CEO,Enterprise security buyers,Security posture reviews,2026-09-22,approved
+Caspian Mbeki-Ross,caspian.mbeki-ross@example.com,07700 900113,Orrery Analytics,Head of Data,Data engineers to hire,Analytics stack design,2026-09-18,approved
+Yusuf Bellamy-Cho,yusuf.bellamy-cho@example.com,07700 900130,Aperture Drones,CTO,Warehouse or agriculture pilot partners,Drone inspection technology,2026-09-24,approved
+Ambrose Ekwueme,ambrose.ekwueme@example.com,07700 900124,Castlegate Accounting,Partner,networking,,2026-09-25,approved
+Marisol Quentin-Vale,marisol.quentin-vale@example.com,07700 900106,Fernhill Climate,Founder,Corporate buyers for climate data,Climate reporting frameworks; Scottish public funder contacts,2026-09-17,approved
+Zuleikha Rahimi-Stone,zuleikha.rahimi-stone@example.com,07700 900116,Northgate Ventures,Venture Partner,Health and climate founders raising a seed round,Fundraising strategy; angel introductions,2026-09-14,approved
+Priya Nandakumar,priya.nandakumar@example.com,07700 900101,Halden & Moss,Managing Partner,Founders raising a Series A in B2B SaaS; co-investors on climate deals,Term-sheet feedback and investor introductions,2026-09-15,approved
+Desmond Faraday,desmond.faraday@example.com,07700 900118,Lantern Health AI,Founder,Hospital pilot sites; a clinical advisor,AI triage tooling; data privacy design,2026-09-27,approved
+Jorund Petrenko,jorund.petrenko@example.com,07700 900111,Stillwater Design Studio,Creative Director,Product teams needing a brand refresh,Brand strategy and UX audits,2026-09-23,approved
+Indira Castellan,indira.castellan@example.com,07700 900131,Castellan Clinics,Medical Director,Digital health founders to advise,Clinical advice for health technology,2026-09-25,approved
+Leopold Vanterpool,leopold.vanterpool@example.com,07700 900117,Emberly Marketing,Founder,B2B clients in fintech or health,PR and launch campaigns,2026-09-25,approved
+Annika Bosworth,annika.bosworth@example.com,07700 900126,Skylark Events,Founder,n/a,n/a,2026-09-27,approved
+Tobias Lindqvist,tobias.lindqvist@example.com,07700 900102,Halden & Moss,Associate,Developer-tools founders at pre-seed; a climate co-investor,Market maps and deck feedback,2026-09-15,approved
+Ifeoma Adeyemi-Brandt,ifeoma.adeyemi-brandt@example.com,07700 900103,Tidewater Robotics,CEO,Warehouse operators willing to pilot our robots,Robotics pilot design; help hiring embedded engineers,2026-09-16,approved
+Xiomara Lindholm,xiomara.lindholm@example.com,07700 900125,Plumtree Learning,Head of Product,,,2026-09-26,approved
+Anselm Drummond,anselm.drummond@example.com,07700 900109,Quillfeather Labs,CTO,Applied AI researchers who could advise us,LLM evaluation methods,2026-09-16,approved
+Barnaby Quist,barnaby.quist@example.com,07700 900120,Ironbridge Manufacturing,Managing Director,Robotics partners for our factory floor,Factory-floor pilot sites,2026-09-20,approved

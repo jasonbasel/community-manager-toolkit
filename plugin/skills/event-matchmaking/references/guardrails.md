@@ -148,6 +148,8 @@ Screen every intro request before searching for candidates.
 - Don't quote members back (from a chat export, notes or registration answers) unless
   it's needed for the task and the manager agrees.
 - Name members in reports only when the manager confirms they're happy to be named.
+- Don't research members or guests on the web, or open their LinkedIn profiles, unless
+  the manager explicitly asks for that person. Never scrape LinkedIn.
 
 ## 12. Removal and opt-out requests
 

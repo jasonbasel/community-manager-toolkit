@@ -49,7 +49,7 @@ system.
 
 | Moment | Set status | Set next_check | What's due then |
 |---|---|---|---|
-| Pair approved, ask not yet sent | `proposed` | blank (events: the morning after) | |
+| Pair approved, ask not yet sent | `proposed` | +1 day, to confirm the ask went out (events: the morning after) | |
 | Manager confirms the consent ask went out | `asked`, `asked_on` | asked_on + 3 days, or + 2 days if the target never engaged | answer, or lapse notice and runner-up |
 | Target says yes | `accepted`, `answered_on` | answered_on + 3 days | follow-through check |
 | Target says no | `declined`, `answered_on` | blank | lapse notice to requester, runner-up row |

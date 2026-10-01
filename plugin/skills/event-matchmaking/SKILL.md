@@ -63,6 +63,9 @@ One line each: name, organisation, role, what they want, what they offer, member
 Take asks and offers from registration answers first, then from member records.
 
 - Mark guests with no ask and no offer as **thin**. Don't invent anything for them.
+- If most guests are thin (common with a plain Luma export), pair who you can and offer
+  the options in `references/data-sources.md` ("When most profiles are thin"): quick
+  tags, member records, host-buddy mode, and two registration questions for next time.
 - Flag near-identical names and possible duplicates for the manager to confirm.
 - Note organisations whose names signal a sensitive attribute, so reasons and messages
   describe them neutrally or leave them out.
@@ -91,6 +94,16 @@ Then assign:
 - At small events (under ~150 people) fully automatic matching is reported to work
   worst, so expect the manager to change pairs, and offer an alternative for every weak
   pair.
+
+**Keep it fast.** The manager is waiting, and they will edit the pairs anyway.
+- Write a compact working list first: one line per guest with a few tags (role or side,
+  sector, ask keywords, offer keywords, organisation).
+- Assign greedily in one pass: take the hardest-to-match guest, give them the best
+  available partner, move on. Pick backups in a second quick pass. Don't search for an
+  optimal assignment and don't revisit settled pairs.
+- If you can run code, use it for scoring and assignment when there are more than ~40
+  guests.
+- Over ~60 guests, show the first 30 rows for approval and offer to continue.
 
 ## Step 4: Reason lines and the approval table
 

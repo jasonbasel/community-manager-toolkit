@@ -120,3 +120,25 @@ deleted messages).
 - Two records that may be the same person, or two people with similar names: show both
   with organisation and role, and ask (`guardrails.md`, identity).
 - Dates: use the event's time zone for event timing and say which one you used.
+
+## When most profiles are thin
+
+Real guest lists are usually thin: a Luma export often has only a name, an email domain,
+a member flag and a LinkedIn link. When most guests have no ask and no offer, say so
+plainly, pair whoever you can, then offer the manager these options in one message:
+
+1. **Quick tags.** The manager (or a colleague who knows the room) gives each guest one
+   tag, e.g. "founder, fintech, raising" or "investor, seed". A tag per line is enough
+   to pair everyone on complementary roles.
+2. **Member records.** For guests who are members, pull roles and asks from the CRM or
+   member directory (see Connected tools above).
+3. **Host-buddy mode.** Needs only the member flag: pair each first-time or non-member
+   guest with a member who greets them and makes one introduction on the night. It
+   helps newcomers most and needs no profile data.
+4. **Next time: two registration questions.** Suggest adding "What are you hoping to get
+   out of tonight?" and "What could you help someone else with?" to the registration
+   form. Draft the wording; change the form only if the manager explicitly asks.
+
+Don't look people up on the web or open LinkedIn profiles to fill gaps unless the manager
+explicitly asks, and never scrape LinkedIn. A LinkedIn link is a pointer for the manager,
+not data for you to collect.

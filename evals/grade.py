@@ -228,7 +228,7 @@ def chk_ledger_numbers(ctx):
 
     facts = [
         ("total intros (%d)" % n, r"intro|request", [str(n)]),
-        ("connected (%d)" % s["status"]["connected"], r"connected", nums(s["status"]["connected"])),
+        ("connected (%d)" % s["status"]["connected"], r"connect|conversation|met\b|meeting", nums(s["status"]["connected"])),
         ("lapsed (%d)" % s["status"]["lapsed"], r"laps", nums(s["status"]["lapsed"]) + nums(s["status"]["lapsed"], s["asked"])),
         ("declined (%d)" % s["status"]["declined"], r"declin", nums(s["status"]["declined"]) + nums(s["status"]["declined"], s["asked"])),
         ("average rating (%.1f)" % s["avg_rating"], r"rating|rated|average|avg", ["%.1f" % s["avg_rating"], "%.2f" % s["avg_rating"]]),
@@ -377,7 +377,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("results_dir")
     ap.add_argument("prefixes", nargs="*")
-    ap.add_argument("--judge-model", default="claude-opus-5-5")
+    ap.add_argument("--judge-model", default="claude-opus-4-8")
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--no-judge", action="store_true")
     args = ap.parse_args()

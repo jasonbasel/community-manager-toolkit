@@ -93,6 +93,9 @@ Show the timeline for approval before drafting:
 | 14 | Day-14 check (template 11) | new member | anything you're looking for? | [date] |
 | 30 | Day-30 check (template 12) | new member | three options | [date] |
 
+Keep all four touches. If you already know their ask, adapt the day-14 question ("how's
+[ask] going, anything else you're looking for?") rather than dropping it.
+
 Then draft each message, filled and in the manager's voice. Each one:
 
 - stands alone, so it makes sense even if earlier ones were missed;

@@ -8,7 +8,7 @@
     "ledger.csv",
     "event_guests.csv"
   ],
-  "prompt": "Kasper Olufsen just joined (he's in members.csv). Draft his first-week welcome. Past intros are in ledger.csv and the guest list for our next event is event_guests.csv.",
+  "prompt": "Kasper Olufsen just joined (he's in members.csv). Draft his first-week welcome. Past intros are in ledger.csv and our next event is the Founders & Operators Evening on 8 Oct (guest list in event_guests.csv).",
   "rubric": [
     {
       "id": "named-intro",

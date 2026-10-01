@@ -98,9 +98,31 @@ def ground_truth(case):
 
 # ----------------------------------------------------------------------------- text helpers
 def result_text(arm_dir, arm):
+    """Everything the model said to the user in the run, not just the final text block.
+
+    The CLI's result event only carries the last assistant text block, so a reply split
+    around a tool call (e.g. table, then a file write, then a closing note) would be graded
+    on its tail alone. Concatenate every assistant text block from the transcript instead.
+    """
     p = arm_dir / ("%s.json" % arm)
     if not p.exists():
         return None
+    stream = arm_dir / ("%s.stream.jsonl" % arm)
+    if stream.exists():
+        texts = []
+        for line in stream.read_text().splitlines():
+            if not line.strip():
+                continue
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if ev.get("type") == "assistant":
+                for c in ev.get("message", {}).get("content", []):
+                    if c.get("type") == "text" and c.get("text", "").strip():
+                        texts.append(c["text"])
+        if texts:
+            return "\n\n".join(texts)
     try:
         return json.loads(p.read_text()).get("result", "") or ""
     except json.JSONDecodeError:

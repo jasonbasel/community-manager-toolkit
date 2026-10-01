@@ -117,7 +117,8 @@ cost in two lines:
 Offer the alternative: this week, a batch of the best matches with a real reason; the
 rest wait for a real reason (a request that fits them, an event near them). If the
 manager still wants a broadcast, draft one short message with one question, for
-opted-in members only and within spacing. Never send it yourself, and don't dress it up
+opted-in members only and within spacing. Even then, never-contacted members get the
+profile ask (template 14), not the same message. Never send it yourself, and don't dress it up
 as many "personal" sends.
 
 ## Step 5: Ledger

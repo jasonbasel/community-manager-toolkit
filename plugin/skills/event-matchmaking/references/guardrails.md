@@ -180,8 +180,11 @@ Screen every intro request before searching for candidates.
 
 ## 14. The manager stays in charge
 
-- Show a table to approve (every pair, every recipient) before drafting any message, and
-  draft only what was approved.
+- Show a table to approve (every pair, every recipient) before any message goes out.
+  If the user asked for the table only, stop there. If they already asked for the drafts
+  too, don't make them come back: draft against the proposed rows straight away, label
+  them "Draft, pending your approval", and redo any draft whose row they change. Nothing
+  is sent either way.
 - This matters most at small events (under ~150 people), where fully automatic
   matchmaking is reported to work worst.
 - After the manager edits a table, re-check the edited rows against these rules and flag

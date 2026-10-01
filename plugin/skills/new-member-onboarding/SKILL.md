@@ -69,8 +69,11 @@ Use the same logic as a member introduction:
 - **Exclude:** anyone at the new member's organisation, anyone asked for an intro in the
   last ~2 weeks, anyone who opted out, and any unresolved similar-name match.
 
-Show the top 3 with a one-line reason each, plus one relevant event in the next ~30 days,
-then stop. The manager picks one person, a runner-up, and approves the event.
+Find the event yourself first: check the files you were given and any connected event
+tool (guest lists, Luma, Eventbrite) before asking. Show the top 3 with a one-line reason
+each, plus one relevant event in the next ~30 days. The manager picks one person, a
+runner-up, and approves the event. If the user already asked for the welcome or the
+sequence, draft them now for the top pick, labelled pending approval.
 
 **Consent comes first.** Draft the consent ask to the named member (template 1,
 onboarding variant). The welcome goes out after they say yes. If there's no yes within
@@ -111,7 +114,8 @@ several new members inside two weeks.
 ## Step 4: Ledger
 
 Add a row per introduction (`references/ledger.md`): source = `onboarding`, requester =
-the new member, target = the named member, status `proposed`. When the consent ask to
+the new member, target = the named member, status `proposed`, written as soon as you
+propose the pick (in the CSV you return if no ledger is connected). When the consent ask to
 the named member goes out, set `asked` and `asked_on`; then follow the usual statuses and
 next_check dates. The day-14 and day-30 check-ins aren't intros: list their dates in the
 output for the manager's calendar instead.
@@ -119,8 +123,9 @@ output for the manager's calendar instead.
 ## Output
 
 1. Profile per new member, and gaps.
-2. The candidate and event table, then stop for the pick.
-3. The timeline table, then stop for approval; then the drafts, each labelled with
+2. The candidate and event table, and the timeline table (Step 3). Stop there unless
+   the user already asked for drafts.
+3. The drafts (now if asked for, otherwise after approval), each labelled with
    recipient and send date.
 4. Ledger rows written, or the CSV.
 5. **Next steps**, always last. For example:

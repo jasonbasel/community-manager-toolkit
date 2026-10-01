@@ -78,11 +78,13 @@ opted out or asked for removal.
 |---|---|---|---|---|---|---|
 
 Flag similar names and confirm identity before continuing. If there are fewer than three
-good fits, say so and show what you have; don't pad the list.
+good fits, say so, then add the best weaker options labelled **weak**, so there is always
+a runner-up.
 
 ## Step 3: The manager picks
 
-The manager picks one candidate and a runner-up. If the pick has never engaged, say
+The manager picks one candidate and a runner-up. If the user already asked for the
+consent ask, draft it for the top candidate now, labelled pending their pick. If the pick has never engaged, say
 that the answer window is shorter and the runner-up matters: in one ~850-member
 professional network, people who had never engaged lapsed about two-thirds of the time,
 against about a quarter for members who had engaged before.
@@ -153,6 +155,8 @@ can't tell which third, and the impact report has nothing to stand on.
 4. Ledger rows written, or the CSV.
 5. **Next steps**, always last. For example:
    - Send the consent ask yourself and tell me when it's gone, so I can set the dates.
+   - If they say yes, I'll draft the connection message; the requester sends the first
+     message within a day.
    - Come back on [date] with the answer, or if there's silence I'll draft the lapse
      notice.
    - Ask me to "follow up on my intros" any time to see what's due.

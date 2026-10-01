@@ -84,11 +84,11 @@ blank; never print them), pairs the manager listed, and guests who opted out.
 
 Then assign:
 
-- Every guest gets 1 primary match and 1 backup. Place the hardest-to-match guests first
-  so nobody is left out.
+- Every guest gets 1 primary match. Place the hardest-to-match guests first so nobody is
+  left out. Add a backup where an obvious one exists; leave it blank rather than
+  deliberate.
 - With an odd number, make one trio rather than leave someone alone.
-- Cap each person at 3 introductions (primary, backup, and being someone else's backup
-  all count).
+- Avoid naming anyone in more than 3 rows.
 - Thin guests: match on role or sector if you can and mark the pair **weak**; otherwise
   list them for the host to place at the door.
 - At small events (under ~150 people) fully automatic matching is reported to work
@@ -99,8 +99,8 @@ Then assign:
 - Write a compact working list first: one line per guest with a few tags (role or side,
   sector, ask keywords, offer keywords, organisation).
 - Assign greedily in one pass: take the hardest-to-match guest, give them the best
-  available partner, move on. Pick backups in a second quick pass. Don't search for an
-  optimal assignment and don't revisit settled pairs.
+  available partner, move on. Don't search for an optimal assignment, don't weigh every
+  combination privately, and don't revisit settled pairs: build the table row by row.
 - If you can run code, use it for scoring and assignment when there are more than ~40
   guests.
 - Over ~60 guests, show the first 30 rows for approval and offer to continue.
@@ -117,7 +117,7 @@ Show this table, then stop:
 
 Below it, list guests with no match, thin profiles, identity questions, and how many
 pairs each rule excluded. No phone numbers or emails. Ask the manager to approve, edit or
-remove rows, and draft nothing until they approve. After edits, re-check the changed rows
+remove rows. If they already asked for drafts, see Output item 2. After edits, re-check the changed rows
 against the guardrails and flag any that now break a rule.
 
 ## Step 5: Produce what was asked for
@@ -143,17 +143,15 @@ manager's voice.
 
 ## Step 6: Registration is not attendance
 
-Tell the manager, briefly: in one ~850-member professional network, a named person to
-find, sent ~90 minutes before a party-style event, drew ~37% replies against ~28% for a
-generic reminder, but only about 30% of pre-matched pairs had both people turn up. So:
+Tell the manager, briefly: in one ~850-member professional network, only about 30% of
+pre-matched pairs had both people turn up (though a named person to find drew ~37%
+replies against ~28% for a generic reminder). So:
 
 - Every guest has a backup for a reason; tell the host to use it.
 - **Re-pair at the door.** Offer door mode: when the manager sends the names of guests who
   have arrived but whose match hasn't, pair them from approved backups first, then from
   other arrivals, under the same rules.
-- The Luma connection can't mark check-ins; check-in happens in Luma's own check-in tool.
-  For who actually came, use a Luma guest export with check-in times, or Eventbrite's
-  check-in status, which is reliable when the door used it.
+- For who actually came, see check-ins in `references/data-sources.md`.
 
 ## Step 7: After the event
 
@@ -169,10 +167,12 @@ When the manager brings back replies, a check-in list or an Eventbrite export:
 ## Output
 
 1. Sources used and gaps.
-2. The approval table, then stop for approval.
-3. After approval: the requested items, in the order in Step 5.
+2. The approval table. Stop there unless the user already asked for drafts or a host
+   sheet; then produce them now, labelled pending approval (`references/guardrails.md` §14).
+3. After approval: the remaining requested items, in the order in Step 5.
 4. Ledger rows written, or the CSV.
-5. **Next steps**, always last. For example:
+5. **Next steps**, always last, always including one line on Step 6 (registration isn't
+   attendance: use the backups, re-pair at the door). For example:
    - Approve or edit the pairs.
    - Send the "find [name]" messages yourself, 60 to 90 minutes before start.
    - Print the host sheet and re-pair at the door; send me the arrivals if you want new

@@ -1,0 +1,41 @@
+Record ID,First Name,Last Name,Email,Phone Number,Company Name,Job Title,City,Country/Region,Create Date,Last Activity Date,Marketing contact status,Lifecycle Stage
+51203400243,Priya,Nandakumar,priya.nandakumar@example.com,07700 900101,Halden & Moss,Managing Partner,London,United Kingdom,2024-06-10 17:29,2026-08-30 09:08,Marketing contact,Evangelist
+51203401884,Rosalind,Tanaka-Whitfield,rosalind.tanaka-whitfield@example.com,07700 900225,Helix Biosystems,CEO,Cambridge,United Kingdom,2024-07-29 16:47,2026-08-12 12:52,Marketing contact,Customer
+51203402518,Reshma,Kowalczyk,reshma.kowalczyk@example.com,07700 900110,Brightharbour Legal,Partner,London,United Kingdom,2024-08-02 15:32,2026-09-17 15:35,Marketing contact,Customer
+51203403870,Ifeoma,Adeyemi-Brandt,ifeoma.adeyemi-brandt@example.com,07700 900103,Tidewater Robotics,CEO,Bristol,United Kingdom,2024-09-15 16:57,2026-09-20 12:42,Marketing contact,Customer
+51203404685,Zuleikha,Rahimi-Stone,zuleikha.rahimi-stone@example.com,07700 900116,Northgate Ventures,Venture Partner,Birmingham,United Kingdom,2024-10-09 12:40,2026-08-05 17:49,Marketing contact,Customer
+51203405385,Jedediah,Crowther,jedediah.crowther@example.com,07700 900213,Anchorpoint Insurance Brokers,Partner,Aberdeen,United Kingdom,2024-10-14 10:07,,Non-marketing contact,Subscriber
+51203406650,Samantha,Patel,samantha.patel@example.com,07700 900226,Mendwell Health,COO,Manchester,United Kingdom,2024-10-21 17:55,2026-03-14 14:57,Non-marketing contact,Other
+51203407344,Barrington,Oduya,barrington.oduya@example.com,07700 900201,Nightjar Capital,Analyst,London,United Kingdom,2024-11-20 10:46,,Non-marketing contact,Subscriber
+51203408595,Wendell,Okonkwo-Hale,wendell.okonkwo-hale@example.com,07700 900107,Brackenridge Capital,Principal,London,United Kingdom,2024-11-30 15:56,2026-08-15 12:09,Marketing contact,Customer
+51203409024,Odalys,Fenwick,odalys.fenwick@example.com,07700 900114,Loomstead Education,CEO,London,United Kingdom,2024-12-03 11:31,2026-09-02 16:12,Marketing contact,Customer
+51203410361,Perpetua,Vanderhoek,perpetua.vanderhoek@example.com,07700 900220,Stonecrop Architects,Director,Amsterdam,Netherlands,2025-01-09 10:43,2026-06-02 15:51,Non-marketing contact,Other
+51203411715,Esme,Thackeray,esme.thackeray@example.com,07700 900112,Pennywhistle Foods,Founder,Bristol,United Kingdom,2025-01-14 10:11,2026-08-23 13:17,Marketing contact,Customer
+51203412766,Ambrose,Ekwueme,ambrose.ekwueme@example.com,07700 900124,Castlegate Accounting,Partner,Birmingham,United Kingdom,2025-01-27 09:39,2026-09-10 16:01,Marketing contact,Customer
+51203413142,Clarisse,Whitlow,clarisse.whitlow@example.com,07700 900202,Meridian Pharmacy Group,Commercial Director,Glasgow,United Kingdom,2025-01-28 13:22,,Non-marketing contact,Subscriber
+51203414039,Gwendolyn,Pryce,gwendolyn.pryce@example.com,07700 900207,Corvid Textiles Mill,Managing Director,Leeds,United Kingdom,2025-02-10 14:43,,Non-marketing contact,Subscriber
+51203415811,Marisol,Quentin-Vale,marisol.quentin-vale@example.com,07700 900106,Fernhill Climate,Founder,Edinburgh,United Kingdom,2025-02-11 15:01,2026-09-04 12:40,Marketing contact,Customer
+51203416722,Tobias,Lindqvist,tobias.lindqvist@example.com,07700 900102,Halden & Moss,Associate,London,United Kingdom,2025-03-02 17:00,2026-09-03 16:39,Marketing contact,Customer
+51203417877,Ezekiel,Marchetti,ezekiel.marchetti@example.com,07700 900205,Cobblestone Coffee Roasters,Founder,Bristol,United Kingdom,2025-03-09 15:55,,Non-marketing contact,Subscriber
+51203418363,Saoirse,Delacroix-Burke,saoirse.delacroix-burke@example.com,07700 900115,Marlowe Health Partners,Clinical Director,Dublin,Ireland,2025-03-25 15:00,2026-09-01 14:20,Marketing contact,Customer
+51203419820,Anwar,Delacourt-Ng,anwar.delacourt-ng@example.com,07700 900200,Inkwell Legal Tech,Founder,London,United Kingdom,2025-04-02 14:51,,Non-marketing contact,Subscriber
+51203420278,Linnea,Vasquez-Holt,linnea.vasquez-holt@example.com,07700 900108,Copperwing Talent,Director,Leeds,United Kingdom,2025-04-08 11:13,2026-08-27 14:05,Marketing contact,Customer
+51203421369,Clementine,Abara,clementine.abara@example.com,07700 900119,Hollowbrook Cyber,CEO,London,United Kingdom,2025-04-22 17:30,2026-08-26 17:27,Marketing contact,Customer
+51203422808,Ignatius,Bellweather,ignatius.bellweather@example.com,07700 900210,Pinecrest Advisory,Consultant,Edinburgh,United Kingdom,2025-04-30 13:41,2026-07-27 11:17,Marketing contact,Customer
+51203423765,Barnaby,Quist,barnaby.quist@example.com,07700 900120,Ironbridge Manufacturing,Managing Director,Sheffield,United Kingdom,2025-05-05 17:35,2026-09-05 10:23,Marketing contact,Customer
+51203424753,Anselm,Drummond,anselm.drummond@example.com,07700 900109,Quillfeather Labs,CTO,Cambridge,United Kingdom,2025-05-19 10:07,2026-09-23 09:17,Marketing contact,Customer
+51203425582,Philomena,Ashdown,philomena.ashdown@example.com,07700 900222,Larkspur Care Staffing,Director,Leeds,United Kingdom,2025-05-28 09:31,,Non-marketing contact,Subscriber
+51203426264,Lachlan,Devereux,lachlan.devereux@example.com,07700 900122,Marrowfield Agritech,Founder,Norwich,United Kingdom,2025-06-16 13:43,2026-09-16 15:04,Marketing contact,Customer
+51203427629,Jorund,Petrenko,jorund.petrenko@example.com,07700 900111,Stillwater Design Studio,Creative Director,Glasgow,United Kingdom,2025-06-23 10:14,2026-08-12 16:18,Marketing contact,Customer
+51203428329,Caspian,Mbeki-Ross,caspian.mbeki-ross@example.com,07700 900113,Orrery Analytics,Head of Data,Manchester,United Kingdom,2025-07-07 09:59,2026-09-08 14:27,Marketing contact,Customer
+51203429656,Beatrix,Halloran,beatrix.halloran@example.com,07700 900121,Anvil & Thread,Founder,Manchester,United Kingdom,2025-08-11 10:56,2026-09-16 10:29,Marketing contact,Customer
+51203430427,Dominic,Achterberg,dominic.achterberg@example.com,07700 900105,Out & Proud Travel Co,Founder,Brighton,United Kingdom,2025-08-19 13:35,2026-09-12 10:18,Marketing contact,Customer
+51203431486,Leopold,Vanterpool,leo.vanterpool@example.com,07700 900117,Emberly Marketing,Founder,London,United Kingdom,2025-09-01 17:27,2026-09-20 10:11,Marketing contact,Customer
+51203432030,Xiomara,Lindholm,xiomara.lindholm@example.com,07700 900125,Plumtree Learning,Head of Product,London,United Kingdom,2025-09-22 09:09,2026-08-17 11:53,Marketing contact,Customer
+51203433042,Thandiwe,Albrecht,thandiwe.albrecht@example.com,07700 900228,Solace Coworking,Community Director,Berlin,Germany,2025-10-13 15:09,2026-08-20 11:14,Marketing contact,Evangelist
+51203434191,Nnamdi,Whitcombe,nnamdi.whitcombe@example.com,07700 900217,Ridgeway Sales Partners,Founder,Leeds,United Kingdom,2025-10-27 14:53,2026-09-23 14:33,Marketing contact,Customer
+51203435500,Sam,Patel,sam.patel@example.com,07700 900100,Ledgerline Pay,Head of Partnerships,London,United Kingdom,2025-11-04 13:58,2026-09-08 09:21,Marketing contact,Customer
+51203436393,Desmond,Faraday,desmond.faraday@example.com,07700 900118,Lantern Health AI,Founder,London,United Kingdom,2025-12-01 12:08,2026-09-24 17:40,Marketing contact,Customer
+51203437271,Annika,Bosworth,annika.bosworth@example.com,07700 900126,Skylark Events,Founder,London,United Kingdom,2026-07-19 10:28,2026-09-04 12:10,Marketing contact,Customer
+51203438156,Ximena,Braithwaite,ximena.braithwaite@example.com,07700 900127,Fieldstone Data,Data Scientist,London,United Kingdom,2026-09-03 16:12,2026-09-24 15:24,Marketing contact,Customer
+51203439878,Kasper,Olufsen,kasper.olufsen@example.com,07700 900104,Tidewater Robotics Ltd,Head of Engineering,Bristol,United Kingdom,2026-09-14 13:50,2026-09-15 15:56,Marketing contact,Customer

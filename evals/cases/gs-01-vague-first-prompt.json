@@ -1,0 +1,38 @@
+{
+  "id": "gs-01-vague-first-prompt",
+  "skill": "getting-started",
+  "title": "Vague first prompt with no files (menu, few questions, one first action)",
+  "design_ref": "DESIGN v0.2 A1 (getting-started), A5",
+  "fixtures": [],
+  "prompt": "I just installed this. I run a ~200-person founders network. Where do I start?",
+  "rubric": [
+    {
+      "id": "job-menu",
+      "text": "It shows a short menu of concrete jobs it can do for a community manager, covering at least introductions between members, event matchmaking, a member directory (or data clean-up), a weekly plan of what to do, and an impact report. Each job comes with a one-line example prompt the manager can copy."
+    },
+    {
+      "id": "few-questions",
+      "text": "It asks a small number of setup questions (no more than five in the reply) about things it cannot know, such as where member records live, where events live, how members are messaged and whether members have agreed to be messaged. Each question has a stated default or example answer. It does not present a long questionnaire."
+    },
+    {
+      "id": "community-profile",
+      "text": "It says it will turn the answers into a short community profile (name, what members are called, where records and events live, channels, who can be messaged, voice and sign-off) that later requests reuse, and offers to save it somewhere findable (a file, a Notion page or Google Doc, or the project instructions). A drafted skeleton profile with defaults also counts."
+    },
+    {
+      "id": "one-first-action",
+      "text": "It recommends one specific first action (for example: set up the profile, build a member directory from whatever list exists, or match the attendees of the next event) and says what it needs for it, rather than listing many equal options."
+    },
+    {
+      "id": "not-a-dump",
+      "text": "The reply is short enough to act on (about one screen: a menu, a few questions, one recommendation). It does not dump a full community strategy, a long template library or a 30-60-90 day plan."
+    },
+    {
+      "id": "no-invention",
+      "text": "It does not invent facts about this community beyond what the manager said (a founders network of about 200 people): no made-up name, tools, member counts or past results."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

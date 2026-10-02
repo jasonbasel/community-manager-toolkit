@@ -1,0 +1,36 @@
+username,email,status,userid,fullname,displayname,title,timezone,last_message_at
+clementine.abara,clementine.abara@example.com,Member,U064DBCC2F9,Clementine Abara,Clementine Abara,CEO at Hollowbrook Cyber,Europe/London,2026-09-26T20:51:51Z
+ifeoma_adeyemibrandt,ifeoma.adeyemi-brandt@example.com,Member,U03334142CB,Ifeoma Adeyemi-Brandt,Ifeoma A.,CEO at Tidewater Robotics,Europe/London,2026-09-25T08:09:09Z
+thandiwe_albrecht,thandiwe.albrecht@example.com,Admin,U0BD12E8CD1,Thandiwe Albrecht,Thandiwe,Community Director | Solace Coworking,Europe/Berlin,2026-08-30T12:15:01Z
+ignatius.bellweather,ignatius.bellweather@example.com,Member,U07CBB361BB,Ignatius Bellweather,Ignatius,Consultant | Pinecrest Advisory,Europe/London,2026-08-19T12:12:28Z
+ximena.b,ximena.braithwaite@example.com,Member,U0D4BD0F7F8,Ximena Braithwaite,Ximena,Data Scientist @ Fieldstone Data,Europe/London,
+sdelacroixburke,saoirse.delacroix-burke@example.com,Member,U036B4C363A,Saoirse Delacroix-Burke,Saoirse,Clinical Director | Marlowe Health Partners,Europe/Dublin,2026-09-20T14:03:04Z
+lachlan.devereux,lachlan.devereux@example.com,Member,U04CC2CBCEC,Lachlan Devereux,Lachlan,Founder @ Marrowfield Agritech,Europe/London,2026-09-21T16:11:09Z
+adrummond,anselm.drummond@example.com,Member,U03B78E063A,Anselm Drummond,Anselm D.,CTO @ Quillfeather Labs,Europe/London,2026-09-26T15:16:35Z
+ambrose_ekwueme,ambrose.ekwueme@example.com,Member,U079D0397A9,Ambrose Ekwueme,Ambrose,"Partner, Castlegate Accounting",Europe/London,2026-09-15T17:39:51Z
+dfaraday,desmond.faraday@example.com,Member,U010E8D2501,Desmond Faraday,Desmond,Founder at Lantern Health AI,Europe/London,2026-09-29T17:52:05Z
+odalys.f,odalys.fenwick@example.com,Member,U040A35398D,Odalys Fenwick,Odalys,CEO at Loomstead Education,Europe/London,2026-09-28T14:47:17Z
+bhalloran,beatrix.halloran@example.com,Member,U04B631AAD5,Beatrix Halloran,Beatrix H.,Founder @ Anvil & Thread,Europe/London,2026-09-27T09:53:40Z
+petra.h,petra.hollingsworth@example.com,Member,U08CA28807C,Petra Hollingsworth,Petra Hollingsworth,,Europe/Dublin,2026-09-28T10:41:43Z
+isidore.k,isidore.kamara@example.com,Member,U0323EA0C6E,Isidore Kamara,Isidore Kamara,Climate Risk Analyst at Seawall Resilience,Europe/London,2026-09-22T18:55:16Z
+evander_kimathi,evander.kimathi@example.com,Member,U0AC0D8BD4D,Evander Kimathi,Evander,Investment Manager @ Redwood Impact Fund,Europe/London,2026-08-31T13:19:42Z
+reshma,reshma.kowalczyk@example.com,Member,U0B8567FF9C,Reshma Kowalczyk,Reshma K.,"Partner, Brightharbour Legal",Europe/London,2026-09-05T14:01:37Z
+winifred.l,winifred.laszlo@example.com,Member,U07DBC89615,Winifred Laszlo,Winifred Laszlo,Product Lead at Glasshouse Insurance,Europe/London,
+obadiah,obadiah.lennox@example.com,Member,U09E7A0DB3F,Obadiah Lennox,Obadiah Lennox,Founder @ Teasel Biotech,Europe/London,2026-09-26T16:11:03Z
+xiomara.lindholm,xiomara.lindholm@example.com,Member,U075E85C01F,Xiomara Lindholm,Xiomara,Head of Product @ Plumtree Learning,Europe/London,2026-09-09T09:14:09Z
+tobias.lindqvist,tobias.lindqvist@example.com,Member,U0563F86843,Tobias Lindqvist,Tobias,Associate @ Halden & Moss,Europe/London,2026-09-08T11:44:58Z
+caspian.m,caspian.mbeki-ross@example.com,Member,U02BEA1E6C2,Caspian Mbeki-Ross,Caspian Mbeki-Ross,Head of Data at Orrery Analytics,Europe/London,2026-09-16T09:42:05Z
+priya.nandakumar,priya.nandakumar@example.com,Member,U03C77BDB9A,Priya Nandakumar,Priya N.,Managing Partner | Halden & Moss,Europe/London,2026-09-22T12:39:09Z
+wendell.o,wendell.okonkwo-hale@example.com,Member,U0B2B24D202,Wendell Okonkwo-Hale,Wendell,Principal @ Brackenridge Capital,Europe/London,2026-09-24T07:04:32Z
+kasper.olufsen,kasper.olufsen@example.com,Member,U09F73D4BCB,Kasper Olufsen,Kasper Olufsen,Head of Engineering | Tidewater Robotics,Europe/London,2026-09-20T10:57:31Z
+sam,sam.patel@example.com,Member,U0C0D391B5F,Sam Patel,Sam,Head of Partnerships @ Ledgerline Pay,Europe/London,2026-09-27T20:38:35Z
+samantha.p,samantha.patel@example.com,Deactivated,U05F2AE3AE5,Samantha Patel,Samantha,"COO, Mendwell Health",Europe/London,2026-02-11T20:34:13Z
+jorund.p,jorund.petrenko@example.com,Member,U0AEB8D6F12,Jorund Petrenko,Jorund Petrenko,Creative Director at Stillwater Design Studio,Europe/London,2026-09-21T09:22:50Z
+marisol.quentin-vale,marisol.quentin-vale@example.com,Member,U08700EA041,Marisol Quentin-Vale,Marisol Quentin-Vale,"Founder, Fernhill Climate",Europe/London,2026-09-18T17:29:15Z
+barnaby.quist,barnaby.quist@example.com,Member,U0F00E2FFE8,Barnaby Quist,Barnaby Q.,Managing Director | Ironbridge Manufacturing,Europe/London,2026-09-19T13:52:40Z
+zuleikha,zuleikha.rahimi-stone@example.com,Member,U06D75BC24B,Zuleikha Rahimi-Stone,Zuleikha,Venture Partner @ Northgate Ventures,Europe/London,2026-09-14T20:56:04Z
+rtanakawhitfield,rosalind.tanaka-whitfield@example.com,Member,U049AC7E922,Rosalind Tanaka-Whitfield,Rosalind Tanaka-Whitfield,CEO | Helix Biosystems,Europe/London,2026-08-26T11:12:43Z
+esme_thackeray,esme.thackeray@example.com,Member,U0D98450341,Esme Thackeray,Esme Thackeray,Founder | Pennywhistle Foods,Europe/London,2026-09-23T15:17:16Z
+perpetua,perpetua.vanderhoek@example.com,Deactivated,U02598FFEF1,Perpetua Vanderhoek,Perpetua,Director at Stonecrop Architects,Europe/Amsterdam,2026-05-19T11:37:05Z
+leopold.v,leopold.vanterpool@example.com,Member,U0CC657E7FF,Leopold Vanterpool,Leopold,Founder @ Emberly Marketing,Europe/London,2026-09-25T10:36:45Z
+linnea.vasquez-holt,linnea.vasquez-holt@example.com,Member,U0890CFC220,Linnea Vasquez-Holt,Linnea V.,Director | Copperwing Talent,Europe/London,2026-09-19T15:21:10Z

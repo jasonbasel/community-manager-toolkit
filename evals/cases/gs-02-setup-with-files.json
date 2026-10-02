@@ -1,0 +1,46 @@
+{
+  "id": "gs-02-setup-with-files",
+  "skill": "getting-started",
+  "title": "Set up from a member list, an intro ledger and upcoming events (profile from files, event first)",
+  "design_ref": "DESIGN v0.2 A1 (getting-started), A5",
+  "fixtures": [
+    "members.csv",
+    "ledger.csv",
+    "events_upcoming.csv"
+  ],
+  "prompt": "I just installed this toolkit. My member list is members.csv, my intro log is ledger.csv and what's coming up is events_upcoming.csv. Set me up.",
+  "rubric": [
+    {
+      "id": "profile-from-files",
+      "text": "It drafts a community profile using facts it can read from the files rather than leaving them blank: the member directory is members.csv (60 members, founders, operators and investors, mostly UK-based with London the biggest city and a few in Dublin, Berlin, Dubai and Amsterdam); the intro ledger is ledger.csv (40 intros logged July to September 2026); events come from events_upcoming.csv (the Founders & Operators Evening on 8 Oct and the Climate & Capital Dinner on 13 Oct)."
+    },
+    {
+      "id": "not-re-asked",
+      "text": "It does not ask questions the files already answer: whether a member list exists or what is in it, whether there is an intro log, what events are coming up, or where members are based."
+    },
+    {
+      "id": "asks-only-gaps",
+      "text": "It asks only for what the files cannot tell it, at most three or four questions drawn from: the community's name, how members are messaged (channel), who can be messaged (the opt-in rule), and the sign-off or voice. Each question has a stated default."
+    },
+    {
+      "id": "ledger-recognised",
+      "text": "It recognises the existing ledger.csv as the intro ledger and does not propose creating a new one; it notices the ledger's notes record two opt-out requests (Hyacinth Rowntree and Jasper Nkemelu) and carries that into the profile or the rules."
+    },
+    {
+      "id": "first-action-event",
+      "text": "It recommends one first action built on the upcoming event: matching the attendees of the Founders & Operators Evening on 8 Oct (the nearest event, 35 registered), with the exact prompt to run and what it still needs (the guest list). It does not recommend something generic that ignores the event."
+    },
+    {
+      "id": "profile-saved",
+      "text": "It writes the profile to a file or presents it as a document, and offers to save it where the other skills will find it (a file in the project, a Notion page or Google Doc titled 'Community profile', or the project instructions)."
+    },
+    {
+      "id": "no-invention",
+      "text": "It does not invent the community's name, its messaging channel, a sign-off or an opt-in rule: anything the files do not say is marked as a default or as to-confirm."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

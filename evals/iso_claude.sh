@@ -36,7 +36,7 @@ echo '{"mcpServers":{}}' > "$EMPTY_MCP"
 
 NOTE="You are running inside an automated test harness with a single user turn; nobody can reply mid-run. \
 Your only tools are file tools on the current working directory: the files the user mentions are there, and any file you produce should be saved there. \
-Treat today's date as 30 September 2026. \
+Treat today's date as ${EVAL_TODAY:-30 September 2026}. \
 Any account email address, username or directory path you can see in your environment belongs to the test harness, not to the person you are helping: never infer a name from it, and never sign or address anything with it (use a placeholder such as [Your name] where a sender name is needed)."
 [[ -n "$NOTE_EXTRA" ]] && NOTE="$NOTE $NOTE_EXTRA"
 

@@ -17,7 +17,7 @@ A full run is 14 cases x 2 arms of `sonnet` plus 28 `opus` judge calls. The smal
 | Path | What |
 |---|---|
 | `fixtures/` | `members.csv` (60), `event_guests.csv` (35), `intro_requests.md` (5), `ledger.csv` (40), `verify_fixtures.py`. Everything is invented: emails use `example.com`, phones use the UK fictional-use range `07700 900xxx`. "Today" is 2026-09-30. |
-| `cases/` | 14 JSON cases: id, skill, prompt, fixtures to copy, rubric items, deterministic checks. Each skill has at least 2. |
+| `cases/` | 20 JSON cases: id, skill, prompt, fixtures to copy, rubric items, deterministic checks. Each skill has at least 2. |
 | `iso_claude.sh` | The one place that defines the isolated `claude` call. `run.sh`, `grade.py` and the probe all use it. |
 | `run.sh` | Copies a case's fixtures into a fresh temp dir per arm, runs the prompt, saves results. |
 | `grade.sh`, `grade.py` | Regex checks plus an `opus` judge per arm (blind to which arm it is); writes `summary.md` and `grades.json`. |

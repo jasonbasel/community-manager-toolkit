@@ -1,0 +1,64 @@
+{
+  "id": "wr-01-weekly-review",
+  "skill": "weekly-community-review",
+  "title": "Weekly review with overdue intros, an upcoming event and a built-in spacing conflict",
+  "design_ref": "DESIGN v0.2 A1 (weekly-community-review), A5",
+  "fixtures": [
+    "community_profile.md",
+    "ledger.csv",
+    "members.csv",
+    "events_upcoming.csv"
+  ],
+  "prompt": "It's Friday 2 October 2026 and I'm planning the next seven days. What should I do this week? My community profile is community_profile.md, our intro ledger is ledger.csv, our member list is members.csv and upcoming events are in events_upcoming.csv.",
+  "today": "2026-10-02",
+  "rubric": [
+    {
+      "id": "max-seven",
+      "text": "The plan has at most seven prioritised items (numbered or clearly ranked), with the most time-critical first. It is not an open-ended to-do dump."
+    },
+    {
+      "id": "item-structure",
+      "text": "Each item gives why it is due now (tied to a date or a fact in the files), what it involves, and the exact prompt to run it (for example 'say: match the attendees for the Founders & Operators Evening')."
+    },
+    {
+      "id": "overdue-intro-answers",
+      "text": "It includes intro asks still unanswered in ledger.csv, with lapse notices or a runner-up: at least Reshma Kowalczyk's ask to Clementine Abara (asked 16 Sep, check due 19 Sep) and Odalys Fenwick's ask to Saoirse Delacroix-Burke (asked 24 Sep, due 27 Sep). The unanswered re-engagement asks (Jorund Petrenko to Mathilde Oyelowo, Esme Thackeray to Seraphina Mwangi) may be included too."
+    },
+    {
+      "id": "checks-due",
+      "text": "It includes overdue follow-through or outcome checks from ledger.csv: at least two of Evander Kimathi and Zuleikha Rahimi-Stone (follow-through, due 3 Sep), Caspian Mbeki-Ross and Anselm Drummond (follow-through, due 1 Sep), Esme Thackeray and Beatrix Halloran (outcome, due 22 Sep), Leopold Vanterpool and Desmond Faraday (outcome, due 20 Sep)."
+    },
+    {
+      "id": "events",
+      "text": "It includes matching the attendees of the Founders & Operators Evening on Thursday 8 October (35 registered, no pairing done, pairing messages go out about 60 to 90 minutes before the start) and mentions the Climate & Capital Dinner on 13 October, whose invitations have not been sent."
+    },
+    {
+      "id": "new-members",
+      "text": "It identifies the eight members who joined in the last 30 days (Kasper Olufsen, Ximena Braithwaite, Obadiah Lennox, Isidore Kamara, Petra Hollingsworth, Ravindra Tuckett, Marguerite Olsson-Pike, Ulrich Amadi), by name or by count, and notes that the ledger has no onboarding row for any of them, so it checks whether they have been welcomed."
+    },
+    {
+      "id": "quarter-end",
+      "text": "It notes that Q3 (July to September) has just ended and an impact report is due, either as one of the items or explicitly deferred."
+    },
+    {
+      "id": "exclusions",
+      "text": "No proactive touch is proposed for the two members who opted out (Hyacinth Rowntree and Jasper Nkemelu), and if a re-engagement batch is proposed it leaves out Mathilde Oyelowo, Seraphina Mwangi and Theodric Ansah, who were touched or queued in the last 7 days."
+    },
+    {
+      "id": "spacing-conflict",
+      "text": "It runs a spacing check across the whole plan and catches at least one built-in double-touch. Built in: Evander Kimathi and Zuleikha Rahimi-Stone would each get both the overdue follow-through check on their accepted intro (ledger row 20260805-evander-zuleikha) and an invitation to the 13 October Climate & Capital Dinner (invitees are named in events_upcoming.csv). Other genuine conflicts also count: Rosalind Tanaka-Whitfield (the unasked intro from Evander plus the dinner invitation), Isidore Kamara (a welcome plus the dinner invitation) and Esme Thackeray (the outcome check on the Beatrix Halloran intro plus the lapse notice on her ask to Seraphina Mwangi). The final plan gives no member more than one proactive touch in the week, and it says what it moved, merged or deferred."
+    },
+    {
+      "id": "schedule",
+      "text": "It explains how to run this review on a schedule each week (for example a scheduled task every Monday at 08:30 in the platform it is running on) and says to keep the output readable without the conversation (for example saved to a file or doc)."
+    },
+    {
+      "id": "uses-profile",
+      "text": "It uses community_profile.md without re-asking for it: it refers to people as members, treats WhatsApp as the channel for members and email for the sponsor and for non-member guests, and does not propose WhatsApp messages to non-members."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim"
+  ]
+}

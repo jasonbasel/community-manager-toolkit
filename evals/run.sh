@@ -77,6 +77,9 @@ for f in "${FILES[@]}"; do
     work="$(mktemp -d "${TMPDIR:-/tmp}/cmt-eval.XXXXXX")"
     while IFS= read -r fx; do cp "$HERE/fixtures/$fx" "$work/"; done < <(casefield "$f" fixtures)
     plugin_args=(); [[ "$arm" == "with" ]] && plugin_args=(--plugin "$PLUGIN")
+    # Per-case date (cases may carry "today": "YYYY-MM-DD"); the default keeps v0.1 cases on 30 Sep 2026.
+    EVAL_TODAY="$(python3 -c 'import json,sys,datetime; t=json.load(open(sys.argv[1])).get("today"); print(datetime.date.fromisoformat(t).strftime("%-d %B %Y") if t else "30 September 2026")' "$f")"
+    export EVAL_TODAY
     start=$(date +%s)
     "$HERE/iso_claude.sh" --cwd "$work" --model "$MODEL" ${plugin_args[@]+"${plugin_args[@]}"} < "$cdir/prompt.txt" \
       > "$cdir/$arm.stream.jsonl" 2> "$cdir/$arm.stderr.txt"

@@ -1,0 +1,59 @@
+{
+  "id": "ch-01-channel-format",
+  "skill": "channel-format",
+  "title": "Channel-aware drafts: a plain-text WhatsApp welcome and a sponsor email with a subject line",
+  "design_ref": "DESIGN v0.2 A2 (channel-aware drafts), A5",
+  "fixtures": [
+    "community_profile.md",
+    "members.csv"
+  ],
+  "prompt": "Draft Kasper Olufsen's welcome message for me. My community profile is community_profile.md and the member list is members.csv. I also need a short email to Harriet Pemberton at Brindlewood Business Bank, our main sponsor, inviting her to the Founders & Operators Evening on Thursday 8 October at 6.30pm.",
+  "rubric": [
+    {
+      "id": "whatsapp-plain-text",
+      "text": "The WhatsApp welcome to Kasper is plain text: no markdown headings, no bold or italic markers, no bullet lists or tables, and no emoji in the first line."
+    },
+    {
+      "id": "whatsapp-short",
+      "text": "The WhatsApp welcome is short: two to four short lines, under about 500 characters, ending in one clear question."
+    },
+    {
+      "id": "profile-signoff",
+      "text": "Both drafts end with the profile's sign-off '\u2014 Priya, Northbridge' (not '[Your name]', not 'Priya Nandakumar', not a different name)."
+    },
+    {
+      "id": "profile-voice",
+      "text": "The drafts follow the profile's voice and vocabulary: warm and brief, first names, UK spelling, no exclamation marks, people called members (never users or customers), at most one emoji."
+    },
+    {
+      "id": "named-intro",
+      "text": "The welcome is built around one named member for Kasper to meet, with a one-line reason drawn from members.csv and a yes/no question. It is not Ifeoma Adeyemi-Brandt (his colleague at Tidewater Robotics), and it shares no contact details."
+    },
+    {
+      "id": "email-subject",
+      "text": "The sponsor email has a subject line, separate from the body."
+    },
+    {
+      "id": "email-format",
+      "text": "The sponsor email is formatted as an email, not as pasted WhatsApp text: a greeting by first name (Harriet), three to five short lines or one short paragraph, the event name, date and time (Thursday 8 October, 6.30pm) and a clear request to reply."
+    },
+    {
+      "id": "no-member-details-to-sponsor",
+      "text": "The sponsor email contains no member names or personal details; it is an invitation only and does not announce Kasper's arrival."
+    },
+    {
+      "id": "reads-profile",
+      "text": "It does not ask the manager which channel to use for members, which for the sponsor, or what to sign off with; it takes them from community_profile.md (WhatsApp for members, email for sponsors, '\u2014 Priya, Northbridge')."
+    },
+    {
+      "id": "not-sent",
+      "text": "Both messages are labelled as drafts for the manager to send; nothing is claimed to be sent."
+    }
+  ],
+  "checks": [
+    "no_contact_details",
+    "no_sent_claim",
+    "has_email_subject",
+    "uses_profile_signoff"
+  ]
+}

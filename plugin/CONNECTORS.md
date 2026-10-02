@@ -4,6 +4,33 @@ Every connector is optional. Each skill starts by checking what is connected, us
 answers, falls back to files you upload or paste, and tells you which sources it used.
 Connect only the tools you already use.
 
+## The Community Manager Toolkit connector (from CommonOS)
+
+An optional hosted connector that gives the skills seven tools. The tools do the exact
+work in code (pairing, merging, counting, checking) so the answer is the same every time.
+The assistant keeps the judgement and the writing. Every skill works without it.
+
+- **Address:** `https://toolkit.commonos.ai/mcp`
+- **Sign-in:** none.
+- **Stored:** nothing. It processes what your assistant sends it in memory, returns the
+  result and discards the data.
+- **Read-only:** none of the tools can send a message or reach your other tools.
+- **Where to add it:** your assistant's connector settings. The steps differ by assistant.
+
+| Tool | What it does | Skills that can call it |
+|---|---|---|
+| `detect_member_fields` | Maps the columns of any export (CRM, Slack, Discord, forms, email tools, Luma, Eventbrite) to member fields. Flags phone and email columns so they are ignored. | member-directory, event-matchmaking |
+| `merge_member_records` | Merges records from several sources into one directory. Matches on exact keys, lists uncertain matches (such as Sam Patel and Samantha Patel at different organisations) for you instead of merging them, and never returns email addresses or phone numbers. | member-directory |
+| `pair_attendees` | Pairs event guests, with a backup for each. Hard rules: never the same organisation, never a pair you have ruled out, a cap on introductions per person. | event-matchmaking |
+| `segment_members` | Sorts members into regular, occasional, nudge-only, dark and never contacted, and says who can be messaged now without breaking your spacing rules. | member-re-engagement, weekly-community-review |
+| `plan_week` | Builds this week's list of up to seven items in priority order and resolves spacing conflicts so no member gets two proactive messages. | weekly-community-review |
+| `compute_impact_metrics` | Counts the introduction funnel, outcomes, ratings, event attendance and new-member activation exactly from your ledger. Numbers only; the skill adds context. | community-impact-report |
+| `check_draft_message` | Checks a draft before you send it: length for the channel, markdown in plain-text channels, more than one question, unfilled placeholders, contact details in a consent ask, broadcast phrasing. | member-introductions, event-matchmaking, new-member-onboarding, member-re-engagement |
+
+Where your assistant supports it, pairing shows a table you can tick, edit and approve in
+the chat, and the impact figures show as a report. Without that, you get the same answer
+as text.
+
 ## Declared in this plugin
 
 These 21 are listed in the plugin's connector file, so assistants that read it offer them
@@ -62,7 +89,7 @@ tool, it confirms each message with you, one at a time, and never bulk-sends.
 
 ## What data goes where
 
-- This plugin has no server of its own. It is a set of instructions; your data stays in
+- The skills are a set of instructions with no server of their own. Your data stays in
   your AI assistant and the tools you connect.
 - The skills read only the fields they need: name, organisation, role, location, what
   people want and offer, last active, opt-in.
@@ -71,6 +98,13 @@ tool, it confirms each message with you, one at a time, and never bulk-sends.
   so you can find the full record in its own system.
 - Writes (the profile, the directory, ledger rows, drafts, a saved report) go only to
   tools you've connected, and only after you approve.
+- If you add the Community Manager Toolkit connector, the data your assistant sends to
+  its tools is processed in memory to compute the result and then discarded. It is not
+  stored and not logged: the connector's logs hold only the tool name, timing, record
+  counts and status. There is no sign-in and no analytics, and it runs in London. Some
+  tools can take an email address so they can recognise the same person in two sources;
+  it is used only for that comparison and never returned.
+- Privacy policy: https://toolkit.commonos.ai/privacy
 
 ## No connectors at all
 

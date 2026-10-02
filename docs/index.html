@@ -4,62 +4,88 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Community Manager Toolkit: free AI plugin for community managers (Claude &amp; ChatGPT)</title>
-<meta name="description" content="Free plugin for Claude and ChatGPT: warm introductions, event matchmaking, onboarding, re-engagement and community impact reports. Drafts only.">
-<link rel="canonical" href="https://jasonbasel.github.io/community-manager-toolkit/">
+<meta name="theme-color" content="#f5f4f0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0d0e10" media="(prefers-color-scheme: dark)">
+<title>Community Manager Toolkit by CommonOS: free plugin for Claude &amp; ChatGPT</title>
+<meta name="description" content="Free plugin for Claude and ChatGPT by CommonOS: warm introductions, event matchmaking, a member directory and impact reports for community managers.">
+<link rel="canonical" href="https://toolkit.commonos.ai/">
 <link rel="icon" type="image/png" href="assets/icon.png">
 <link rel="stylesheet" href="style.css">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Community Manager Toolkit">
-<meta property="og:title" content="Community Manager Toolkit: free AI plugin for community managers (Claude &amp; ChatGPT)">
-<meta property="og:description" content="Free plugin for Claude and ChatGPT: warm introductions, event matchmaking, onboarding, re-engagement and community impact reports. Drafts only.">
-<meta property="og:url" content="https://jasonbasel.github.io/community-manager-toolkit/">
-<meta property="og:image" content="https://jasonbasel.github.io/community-manager-toolkit/assets/logo.png">
+<meta property="og:site_name" content="Community Manager Toolkit by CommonOS">
+<meta property="og:title" content="Community Manager Toolkit by CommonOS: free plugin for Claude &amp; ChatGPT">
+<meta property="og:description" content="Free plugin for Claude and ChatGPT by CommonOS: warm introductions, event matchmaking, a member directory and impact reports for community managers.">
+<meta property="og:url" content="https://toolkit.commonos.ai/">
+<meta property="og:image" content="https://toolkit.commonos.ai/assets/logo.png">
 <meta name="twitter:card" content="summary">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "Community Manager Toolkit",
+  "alternateName": "Community Manager Toolkit by CommonOS",
   "applicationCategory": "BusinessApplication",
   "operatingSystem": "Any (runs inside Claude or ChatGPT)",
-  "description": "A free plugin for Claude and ChatGPT that helps community managers run warm introductions, event matchmaking, new member onboarding, member re-engagement and community impact reports.",
-  "url": "https://jasonbasel.github.io/community-manager-toolkit/",
+  "description": "A free plugin for Claude and ChatGPT that helps community managers run warm introductions, event matchmaking, a member directory, new member onboarding, member re-engagement and community impact reports. An optional connector does the matching, merging and counting in code and stores nothing.",
+  "url": "https://toolkit.commonos.ai/",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" },
   "license": "https://opensource.org/licenses/MIT",
-  "author": { "@type": "Person", "name": "Jason Basel", "email": "jason@communitylab.ai" },
+  "publisher": { "@type": "Organization", "name": "CommonOS", "url": "https://commonos.ai", "email": "jason@commonos.ai" },
   "codeRepository": "https://github.com/jasonbasel/community-manager-toolkit",
-  "image": "https://jasonbasel.github.io/community-manager-toolkit/assets/logo.png"
+  "image": "https://toolkit.commonos.ai/assets/logo.png"
 }
 </script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site">
-  <a class="brand" href="index.html"><img src="assets/logo.png" alt="" width="36" height="36"><span>Community Manager Toolkit</span></a>
+  <a class="brand" href="index.html"><img src="assets/logo.png" alt="" width="36" height="36"><span><span class="name">Community Manager Toolkit</span><span class="by">by CommonOS</span></span></a>
   <nav class="site" aria-label="Main"><a href="index.html" aria-current="page">Home</a><a href="support.html">Support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="https://github.com/jasonbasel/community-manager-toolkit">GitHub</a></nav>
 </header>
 <main id="main">
 
+<p class="eyebrow">by <a href="https://commonos.ai">CommonOS</a></p>
 <h1>Community Manager Toolkit</h1>
-<p class="lede">A free plugin for Claude and ChatGPT that helps community managers introduce members to each other, match people at events, welcome and re-engage members, and prove community ROI with outcomes instead of activity.</p>
+<p class="lede">A free plugin for Claude and ChatGPT. It helps community managers introduce members to each other, match people at events, keep one clean member directory and show the value of a community with outcomes instead of activity.</p>
 <div class="actions">
   <!-- TODO: replace href="#install" with the directory URLs once each listing is approved -->
   <a class="button" href="#install">Install for Claude</a>
   <a class="button" href="#install">Install for ChatGPT</a>
   <a class="button secondary" href="https://github.com/jasonbasel/community-manager-toolkit">View on GitHub</a>
 </div>
-<p class="muted">Built from what worked in a real ~850-member professional network. Free and open source (MIT). No account, no server, nothing collected.</p>
+<p class="muted">Built from what worked in a real ~850-member professional network. Free and open source (MIT). No account to create. The skills have no server. The optional connector stores nothing.</p>
 
-<h2 id="skills">Five skills for community management</h2>
+<h2 id="skills">Eight skills for community management</h2>
 <div class="grid">
+  <div class="card"><h3>Getting started</h3><p>Shows the eight jobs with a prompt to copy for each, checks which of your tools are connected, and writes a Community profile so no skill asks the same thing twice.</p></div>
+  <div class="card"><h3>Member directory</h3><p>One clean member table from your CRM, Slack or Discord, sheets, forms and email tools. De-duplicated, with the gaps listed and a plan to fill them. No phone numbers or email addresses in the directory.</p></div>
+  <div class="card"><h3>Weekly community review</h3><p>Up to seven things to do this week, each with the prompt to run it, spaced so no member gets two messages.</p></div>
   <div class="card"><h3>Event matchmaking</h3><p>Pair attendees from a Luma or Eventbrite guest list (or a CSV) with a reason and a backup for everyone. Get a host sheet, &ldquo;find [name]&rdquo; messages and a morning-after follow-up.</p></div>
   <div class="card"><h3>Member introductions</h3><p>Consent-first, double opt-in warm introductions. Screens out sales pitches, checks identity when names are similar, and follows up until you know the conversation happened.</p></div>
-  <div class="card"><h3>Community impact report</h3><p>A board or sponsor report built on outcomes: conversations that happened and how members rated them. Data coverage is stated honestly.</p></div>
   <div class="card"><h3>New member onboarding</h3><p>A first month built around one named introduction instead of a feature tour, with day-3, day-14 and day-30 check-ins.</p></div>
   <div class="card"><h3>Member re-engagement</h3><p>Segment quiet and dormant members, pick the right touch for each, and draft a small batch of personal messages instead of a broadcast.</p></div>
+  <div class="card"><h3>Community impact report</h3><p>A board or sponsor report built on outcomes: conversations that happened and how members rated them. Data coverage is stated honestly.</p></div>
 </div>
-<p>Ask in plain words: &ldquo;Match the attendees of my next Luma event&rdquo;, &ldquo;Help me introduce two members, double opt-in&rdquo; or &ldquo;Build this quarter&rsquo;s community impact report&rdquo;.</p>
+<p>Ask in plain words: &ldquo;What can you do for my community?&rdquo;, &ldquo;Match the attendees of my next Luma event&rdquo; or &ldquo;Help me introduce two members, double opt-in&rdquo;.</p>
+
+<h2 id="connector">An optional connector that does the sums</h2>
+<p>The skills work on their own. Add the connector and seven tools do the exact work in code: mapping, merging, pairing, counting and checking. The answer is the same every time. The assistant keeps the judgement and the writing.</p>
+<p>The connector processes what your assistant sends it in memory and stores nothing. There is no sign-in. Address: <code>https://toolkit.commonos.ai/mcp</code></p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th scope="col">Tool</th><th scope="col">What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>detect_member_fields</code></td><td>Maps the columns of any export (CRM, Slack, Discord, forms, email tools, Luma, Eventbrite) to member fields and flags contact columns so they are ignored.</td></tr>
+    <tr><td><code>merge_member_records</code></td><td>Merges records from several sources into one directory. Lists uncertain matches for you instead of merging them. Never returns email addresses or phone numbers.</td></tr>
+    <tr><td><code>pair_attendees</code></td><td>Pairs event guests, with a backup for each. Never the same organisation, never a pair you have ruled out, a cap on introductions per person.</td></tr>
+    <tr><td><code>segment_members</code></td><td>Sorts members by activity and says who can be messaged now without breaking your spacing rules.</td></tr>
+    <tr><td><code>plan_week</code></td><td>Builds this week&rsquo;s list of up to seven items and resolves spacing conflicts so no member gets two proactive messages.</td></tr>
+    <tr><td><code>compute_impact_metrics</code></td><td>Counts the introduction funnel, outcomes, ratings, event attendance and new-member activation exactly from your ledger.</td></tr>
+    <tr><td><code>check_draft_message</code></td><td>Checks a draft against the channel&rsquo;s rules before you send it: length, markdown, more than one question, placeholders, contact details in a consent ask.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Where your assistant supports it, pairing shows a table you can tick, edit and approve in the chat, and the impact figures show as a report. Otherwise you get the same answer as text. Every tool is read-only: none of them can send a message.</p>
 
 <h2 id="why">Why it works this way</h2>
 <p>The rules come from one ~850-member professional network running member introductions over WhatsApp from June to September 2026. Figures are rounded, come from that one network, and are a reference point, not a benchmark.</p>
@@ -76,51 +102,63 @@
   <li><strong>Consent first.</strong> Nobody&rsquo;s details go to another person until they have said yes.</li>
   <li><strong>No same-organisation pairs</strong>, and identity checks (full name and organisation) when two members have similar names.</li>
   <li><strong>Professional reasons only.</strong> Match reasons never mention or infer sensitive attributes.</li>
-  <li><strong>Data minimisation.</strong> Reports and the intro ledger never include phone numbers or email addresses.</li>
+  <li><strong>Data minimisation.</strong> Reports, the member directory and the intro ledger never include phone numbers or email addresses.</li>
   <li><strong>Cooldowns and spacing</strong> so members are not over-messaged, and opt-out or removal requests are honoured immediately.</li>
 </ul>
 
 <h2 id="install">How to install</h2>
-<p>The toolkit is a set of instructions (skills) that your AI assistant follows. Pick your assistant:</p>
+<p>The toolkit is a set of instructions (skills) that your AI assistant follows, plus the optional connector. Pick your assistant:</p>
 <h3>Claude (claude.ai, Claude Desktop, Claude Code)</h3>
 <ol class="steps">
   <li>Open the Claude plugin directory. <span class="muted">(Directory link coming once the listing is approved.)</span></li>
   <li>Search for &ldquo;Community Manager Toolkit&rdquo; and install it.</li>
-  <li>Optionally connect Luma, Notion, HubSpot, Slack or Google Drive from your connector settings.</li>
+  <li>Optionally add the connector from your connector settings, and connect your CRM, Luma, Notion, Slack or Google Drive.</li>
   <li>Type a request such as &ldquo;Match the attendees of my next Luma event&rdquo;.</li>
 </ol>
 <h3>ChatGPT</h3>
 <ol class="steps">
   <li>Open the ChatGPT Plugin Directory. <span class="muted">(Directory link coming once the listing is approved.)</span></li>
   <li>Search for &ldquo;Community Manager Toolkit&rdquo; and add it.</li>
-  <li>Optionally connect the apps you use, then start with one of the suggested prompts.</li>
+  <li>Optionally connect the tools you use, then start with one of the suggested prompts.</li>
 </ol>
 <h3>Without installing</h3>
 <p>The skills are plain Markdown files in the <a href="https://github.com/jasonbasel/community-manager-toolkit/tree/main/plugin/skills">plugin/skills</a> folder on GitHub. You can read them, adapt them, or paste one into any AI assistant.</p>
 
 <h2 id="works-with">Works with your tools, or just a file</h2>
-<p>Everything is optional. The toolkit uses whatever you have connected, such as Luma, HubSpot, Notion, Slack, Google Drive, Airtable, Gmail or Circle. With nothing connected, upload a CSV export (including Eventbrite attendee reports) or a WhatsApp chat export.</p>
+<p>Everything is optional. The toolkit uses whatever you have connected:</p>
+<ul class="facts">
+  <li><strong>CRM:</strong> HubSpot, Salesforce, Attio, Pipedrive, Affinity, Zoho CRM.</li>
+  <li><strong>Community:</strong> Slack (connected) and Discord (upload a member list).</li>
+  <li><strong>Events:</strong> Luma, Ticket Tailor, RSVPify, and Eventbrite attendee reports.</li>
+  <li><strong>Sheets and notes:</strong> Airtable, Google Sheets, Excel, Notion, Google Drive.</li>
+  <li><strong>Forms and email tools:</strong> Typeform, Tally, Google Forms, Jotform, Mailchimp, Kit, beehiiv, MailerLite.</li>
+  <li><strong>Files:</strong> any CSV export, a WhatsApp chat export, a LinkedIn connections export.</li>
+</ul>
+<p>With nothing connected, upload a CSV export or a WhatsApp chat export and the skills work from the file.</p>
 
 <h2 id="privacy">Privacy in short</h2>
 <ul class="facts">
-  <li>The plugin is instructions only. It has no server and collects and stores nothing.</li>
-  <li>Your data is processed by the AI assistant you run it in, and by any tools you connect, under those providers&rsquo; terms.</li>
-  <li>This website uses no analytics and sets no cookies of its own. It is hosted on GitHub Pages, which has its own logging.</li>
+  <li>The skills are instructions only. They have no server and collect and store nothing.</li>
+  <li>The optional connector processes what your assistant sends it in memory, then discards it. It stores nothing, logs no content, has no sign-in and runs in London.</li>
+  <li>Your data is also processed by the AI assistant you run the toolkit in, and by any tools you connect, under those providers&rsquo; terms.</li>
+  <li>This website uses no analytics and sets no cookies.</li>
   <li>You are responsible for having a lawful basis and any consent needed for the member data you use (UK GDPR and GDPR).</li>
 </ul>
 <p><a href="privacy.html">Read the privacy policy</a> &middot; <a href="terms.html">Terms of use</a> &middot; <a href="support.html">Support</a></p>
 
 <h2 id="faq">Questions</h2>
-<details><summary>Is it free?</summary><p>Yes. It is open source under the MIT licence. Your AI assistant or the tools you connect may have their own costs.</p></details>
-<details><summary>Does it send messages to my members?</summary><p>No. It writes drafts. Sending happens only if you explicitly ask it to, through a connected tool that asks you to confirm, or when you copy the text yourself.</p></details>
+<details><summary>Is it free?</summary><p>Yes. The plugin and the connector are open source under the MIT licence, and the hosted connector is free to use, provided as is. Your AI assistant or the tools you connect may have their own costs.</p></details>
+<details><summary>Does it send messages to my members?</summary><p>No. It writes drafts. Sending happens only if you explicitly ask it to, through a connected tool that asks you to confirm, or when you copy the text yourself. The connector cannot send anything.</p></details>
+<details><summary>Do I need the connector?</summary><p>No. Every skill works without it. The connector makes pairing, merging and counting exact and repeatable, and gives you an approval table in the chat where your assistant supports it.</p></details>
 <details><summary>Who is it for?</summary><p>Anyone running a professional network, association, alumni group, members&rsquo; club, accelerator cohort, event series or WhatsApp community, especially small teams where one person does everything.</p></details>
-<details><summary>Who made it?</summary><p>Jason Basel, an individual based in the UK. Source and issues are on <a href="https://github.com/jasonbasel/community-manager-toolkit">GitHub</a>; you can also email <a href="mailto:jason@communitylab.ai">jason@communitylab.ai</a>.</p></details>
+<details><summary>Who made it?</summary><p><a href="https://commonos.ai">CommonOS</a>, a company being formed in the UK. Until CommonOS Ltd is incorporated, it is operated by Jason Basel as an individual. Source and issues are on <a href="https://github.com/jasonbasel/community-manager-toolkit">GitHub</a>; you can also email <a href="mailto:jason@commonos.ai">jason@commonos.ai</a>.</p></details>
 
 </main>
 <footer class="site">
-  <p>Community Manager Toolkit is a free, open-source project by Jason Basel, an individual based in the UK. Contact: <a href="mailto:jason@communitylab.ai">jason@communitylab.ai</a>. Licence: <a href="https://github.com/jasonbasel/community-manager-toolkit/blob/main/LICENSE">MIT</a>.</p>
+  <p>Community Manager Toolkit is a free, open-source project from <a href="https://commonos.ai">CommonOS</a>, operated by Jason Basel as an individual until CommonOS Ltd is incorporated. Contact: <a href="mailto:jason@commonos.ai">jason@commonos.ai</a>. Licence: <a href="https://github.com/jasonbasel/community-manager-toolkit/blob/main/LICENSE">MIT</a>.</p>
   <p>Claude is a trademark of Anthropic, PBC. ChatGPT and OpenAI are trademarks of OpenAI. This is an independent project and is not affiliated with or endorsed by either company.</p>
   <p><a href="index.html">Home</a> &middot; <a href="support.html">Support</a> &middot; <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a> &middot; <a href="https://github.com/jasonbasel/community-manager-toolkit">GitHub</a></p>
+  <p class="tagline">Serendipity, engineered.</p>
 </footer>
 </body>
 </html>

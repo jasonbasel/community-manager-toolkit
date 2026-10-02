@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /mcp
+Disallow: /healthz
 
-Sitemap: https://jasonbasel.github.io/community-manager-toolkit/sitemap.xml
+Sitemap: https://toolkit.commonos.ai/sitemap.xml

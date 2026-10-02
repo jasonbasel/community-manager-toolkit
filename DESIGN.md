@@ -1,7 +1,9 @@
-# Community Manager Toolkit: design spec (v0)
+# Community Manager Toolkit by CommonOS: design spec
 
-Owner: Jason Basel (private individual). Contact: jason@communitylab.ai. Licence: MIT.
-Status: v0, skills-only, no hosted service. Written 30 Sep 2026.
+Publisher: CommonOS, operated by Jason Basel until CommonOS Ltd is incorporated
+(decided 2 Oct 2026; v0.1 was published by Jason as an individual). Contact:
+jason@commonos.ai. Licence: MIT. v0.1 written 30 Sep 2026 (skills only); v0.2 additions
+at the end; the hosted connector is specified in `connector/DESIGN.md`.
 
 This file is the source of truth for what the plugin does and why. The skills are built
 from it. It stays in the repo root, outside the plugin folder, so it is not shipped.

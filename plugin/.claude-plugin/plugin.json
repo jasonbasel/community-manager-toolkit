@@ -2,13 +2,13 @@
   "name": "community-manager-toolkit",
   "displayName": "Community Manager Toolkit",
   "version": "0.2.0",
-  "description": "Introductions, event matchmaking, a member directory, a weekly review and impact reports for community managers. Works with your CRM, Slack, Discord, sheets, forms and email tools.",
+  "description": "Introductions, event matchmaking, a member directory, a weekly review and impact reports for community managers. Works with your CRM, Slack, Discord, sheets, forms and email tools. Made by CommonOS.",
   "author": {
-    "name": "Jason Basel",
-    "email": "jason@communitylab.ai",
-    "url": "https://github.com/jasonbasel"
+    "name": "CommonOS",
+    "email": "jason@commonos.ai",
+    "url": "https://commonos.ai"
   },
-  "homepage": "https://jasonbasel.github.io/community-manager-toolkit/",
+  "homepage": "https://toolkit.commonos.ai/",
   "repository": "https://github.com/jasonbasel/community-manager-toolkit",
   "license": "MIT",
   "keywords": [
@@ -46,6 +46,7 @@
     "Mailchimp",
     "member directory",
     "member database",
-    "weekly review"
+    "weekly review",
+    "CommonOS"
   ]
 }

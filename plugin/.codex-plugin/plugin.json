@@ -1,13 +1,13 @@
 {
   "name": "community-manager-toolkit",
   "version": "0.2.0",
-  "description": "Introductions, event matchmaking, a member directory, a weekly review and impact reports for community managers. Works with your CRM, Slack, Discord, sheets, forms and email tools.",
+  "description": "Introductions, event matchmaking, a member directory, a weekly review and impact reports for community managers. Works with your CRM, Slack, Discord, sheets, forms and email tools. Made by CommonOS.",
   "author": {
-    "name": "Jason Basel",
-    "email": "jason@communitylab.ai",
-    "url": "https://github.com/jasonbasel"
+    "name": "CommonOS",
+    "email": "jason@commonos.ai",
+    "url": "https://commonos.ai"
   },
-  "homepage": "https://jasonbasel.github.io/community-manager-toolkit/",
+  "homepage": "https://toolkit.commonos.ai/",
   "repository": "https://github.com/jasonbasel/community-manager-toolkit",
   "license": "MIT",
   "keywords": [
@@ -45,20 +45,21 @@
     "Mailchimp",
     "member directory",
     "member database",
-    "weekly review"
+    "weekly review",
+    "CommonOS"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Community Manager Toolkit",
     "shortDescription": "Intros, event matching, ROI",
-    "longDescription": "Community Manager Toolkit helps the person running a professional network, association, alumni group, members' club, accelerator cohort or event series do the relationship work that shows value.\n\nEight skills:\n- Getting started: what the toolkit does, which of your tools to connect, and a Community profile (what members are called, channels, who can be messaged, voice, language) so no skill asks the same thing twice.\n- Member directory: one clean member table from your CRM (HubSpot, Salesforce, Attio, Pipedrive, Affinity or Zoho), Slack or Discord, Airtable, Google Sheets, Excel or Notion, application forms and email tools. Maps fields by meaning, de-duplicates, lists uncertain matches for you to decide, and reports the gaps.\n- Weekly community review: up to seven things to do this week, each with the prompt to run it, spaced so no member gets more than one proactive message.\n- Event matchmaking: pair attendees from a Luma, Eventbrite, Ticket Tailor or RSVPify guest list or a CSV, with a reason for each pair and a backup for everyone. Produces a host sheet, pre-event \"find [name]\" messages and a morning-after follow-up.\n- Member introductions: consent-first, double opt-in warm intros. Screens out sales pitches, confirms identity, and drafts the consent ask, connection message, lapse notice and follow-up checks.\n- New member onboarding: a first month built around one named introduction, with day-3, day-14 and day-30 check-ins.\n- Member re-engagement: segment quiet members, pick the right touch for each, check message spacing, and draft a small batch of personal messages instead of a broadcast.\n- Community impact report: a board- or sponsor-ready report built on outcomes (conversations that happened and how members rated them), with data coverage stated honestly.\n\nEvery introduction goes into an intro ledger (a Notion database, Google Sheet, Airtable table or CSV file) so follow-ups happen and the impact report has real outcomes to count. Drafts are formatted for your channel: WhatsApp, SMS, email, Slack, Discord or LinkedIn. The rules and message shapes come from what worked in a real ~850-member professional network.\n\nIt drafts; you decide. You approve every pair and every message, nothing is sent unless you explicitly ask, one message at a time, and it never bulk-sends. It works with the tools you connect, such as a CRM, Slack, Luma, Notion, Airtable, Google Sheets, Gmail or Microsoft 365, form tools such as Tally or Jotform, and email tools such as Mailchimp, Kit, beehiiv or MailerLite. Or upload files instead: exports from Eventbrite, Typeform or Google Forms, a Discord member list, a WhatsApp chat export, or any CSV.\n\nPrivacy: this plugin has no server and stores nothing. Your data stays in your AI assistant and the tools you connect. Reports, the intro ledger and the member directory never include phone numbers or email addresses. Privacy policy: https://jasonbasel.github.io/community-manager-toolkit/privacy.html",
+    "longDescription": "Community Manager Toolkit by CommonOS helps the person running a professional network, association, alumni group, members' club, accelerator cohort or event series do the relationship work that shows value.\n\nEight skills:\n- Getting started: what the toolkit does, which of your tools to connect, and a Community profile (what members are called, channels, who can be messaged, voice, language) so no skill asks the same thing twice.\n- Member directory: one clean member table from your CRM (HubSpot, Salesforce, Attio, Pipedrive, Affinity or Zoho), Slack or Discord, Airtable, Google Sheets, Excel or Notion, application forms and email tools. Maps fields by meaning, de-duplicates, lists uncertain matches for you to decide, and reports the gaps.\n- Weekly community review: up to seven things to do this week, each with the prompt to run it, spaced so no member gets more than one proactive message.\n- Event matchmaking: pair attendees from a Luma, Eventbrite, Ticket Tailor or RSVPify guest list or a CSV, with a reason for each pair and a backup for everyone. Produces a host sheet, pre-event \"find [name]\" messages and a morning-after follow-up.\n- Member introductions: consent-first, double opt-in warm intros. Screens out sales pitches, confirms identity, and drafts the consent ask, connection message, lapse notice and follow-up checks.\n- New member onboarding: a first month built around one named introduction, with day-3, day-14 and day-30 check-ins.\n- Member re-engagement: segment quiet members, pick the right touch for each, check message spacing, and draft a small batch of personal messages instead of a broadcast.\n- Community impact report: a board- or sponsor-ready report built on outcomes (conversations that happened and how members rated them), with data coverage stated honestly.\n\nEvery introduction goes into an intro ledger (a Notion database, Google Sheet, Airtable table or CSV file) so follow-ups happen and the impact report has real outcomes to count. Drafts are formatted for your channel: WhatsApp, SMS, email, Slack, Discord or LinkedIn. The rules and message shapes come from what worked in a real ~850-member professional network.\n\nIt drafts; you decide. You approve every pair and every message, nothing is sent unless you explicitly ask, one message at a time, and it never bulk-sends. It works with the tools you connect, such as a CRM, Slack, Luma, Notion, Airtable, Google Sheets, Gmail or Microsoft 365, form tools such as Tally or Jotform, and email tools such as Mailchimp, Kit, beehiiv or MailerLite. Or upload files instead: exports from Eventbrite, Typeform or Google Forms, a Discord member list, a WhatsApp chat export, or any CSV.\n\nPrivacy: the skills have no server, and your data stays in your AI assistant and the tools you connect. An optional connector adds seven tools (mapping export columns, merging member records, pairing attendees, segmenting members, planning the week, computing impact figures and checking drafts). It processes what you send in memory and stores nothing, and there is no sign-in. Reports, the intro ledger and the member directory never include phone numbers or email addresses. Privacy policy: https://toolkit.commonos.ai/privacy",
     "developerName": "Jason Basel",
     "category": "Business & Operations",
     "capabilities": [],
-    "websiteURL": "https://jasonbasel.github.io/community-manager-toolkit/",
-    "supportURL": "https://jasonbasel.github.io/community-manager-toolkit/support.html",
-    "privacyPolicyURL": "https://jasonbasel.github.io/community-manager-toolkit/privacy.html",
-    "termsOfServiceURL": "https://jasonbasel.github.io/community-manager-toolkit/terms.html",
+    "websiteURL": "https://toolkit.commonos.ai/",
+    "supportURL": "https://toolkit.commonos.ai/support",
+    "privacyPolicyURL": "https://toolkit.commonos.ai/privacy",
+    "termsOfServiceURL": "https://toolkit.commonos.ai/terms",
     "defaultPrompt": [
       "What can you do for my community?",
       "Match the attendees of my next Luma event",

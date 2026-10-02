@@ -1,12 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Community Manager Toolkit logo: two connected nodes">
-  <title>Community Manager Toolkit</title>
-  <!-- Rounded square, deep indigo. One accent colour (amber #FFB627) plus off-white. No text. -->
-  <rect x="0" y="0" width="1024" height="1024" rx="230" ry="230" fill="#1B2440"/>
-  <!-- the introduction: one curved line hands a person (amber) over to another (off-white) -->
-  <path d="M 312 712 C 312 470 470 312 712 312" fill="none" stroke="#F6F1E7" stroke-width="52" stroke-linecap="round"/>
-  <circle cx="312" cy="712" r="124" fill="#FFB627"/>
-  <circle cx="712" cy="312" r="124" fill="#F6F1E7"/>
-  <!-- small inner dot on each node: a person -->
-  <circle cx="312" cy="712" r="40" fill="#1B2440"/>
-  <circle cx="712" cy="312" r="40" fill="#1B2440"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Community Manager Toolkit by CommonOS: two connected nodes">
+  <title>Community Manager Toolkit by CommonOS</title>
+  <!-- CommonOS palette: ink #0d0e10 ground, fog #eceae4 line and first node, N-7 #a3a7ad second node. Square: hosts round icons themselves. No text. -->
+  <rect x="0" y="0" width="1024" height="1024" fill="#0d0e10"/>
+  <!-- the introduction: one curved line hands a person over to another -->
+  <path d="M 312 712 C 312 470 470 312 712 312" fill="none" stroke="#eceae4" stroke-width="52" stroke-linecap="round"/>
+  <circle cx="312" cy="712" r="124" fill="#a3a7ad"/>
+  <circle cx="712" cy="312" r="124" fill="#eceae4"/>
+  <circle cx="312" cy="712" r="40" fill="#0d0e10"/>
+  <circle cx="712" cy="312" r="40" fill="#0d0e10"/>
 </svg>

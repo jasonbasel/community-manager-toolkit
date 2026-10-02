@@ -45,7 +45,8 @@ from pathlib import Path
 root = Path(sys.argv[1])
 plugin = root / "plugin"
 skills_dir = plugin / "skills"
-EXPECTED_SKILLS = ["event-matchmaking", "member-introductions", "community-impact-report",
+EXPECTED_SKILLS = ["getting-started", "member-directory", "weekly-community-review",
+                   "event-matchmaking", "member-introductions", "community-impact-report",
                    "new-member-onboarding", "member-re-engagement"]
 FORBIDDEN = re.compile(r"claude|chatgpt|openai|anthropic|~~", re.I)
 MAX_FILE = 256 * 1024
@@ -122,7 +123,7 @@ rule("every JSON file parses (and the three manifests exist)", bad)
 # ---- skills exist
 missing = ["plugin/skills/%s/SKILL.md is missing" % s for s in EXPECTED_SKILLS if not (skills_dir / s / "SKILL.md").is_file()]
 extra = ["plugin/skills/%s has no SKILL.md" % d.name for d in sorted(skills_dir.glob("*")) if d.is_dir() and not (d / "SKILL.md").is_file()] if skills_dir.is_dir() else []
-rule("all five skills present", missing + extra)
+rule("all eight skills present", missing + extra)
 
 # ---- per-skill front matter / size / naming
 fm_problems, desc_problems, words_problems, name_problems = [], [], [], []

@@ -92,9 +92,10 @@ percentages, and flag any rate built on fewer than about 10 rows.
 ## Where to keep it
 
 Preference order: a Notion database if Notion is connected, else a Google Sheet if Google
-Drive is connected, else Airtable if connected, else a CSV file the manager downloads and
-uploads next time. Before creating anything, look for an existing ledger and ask the
-manager where it lives; never create a second one.
+Sheets or Google Drive is connected, else Airtable if connected, else a CSV file the
+manager downloads and uploads next time. Before creating anything, check the Community
+profile's "Intro ledger" line, then look for an existing ledger, and ask the manager
+where it lives if you still can't tell; never create a second one.
 
 **Notion.** Ask which page to create it under. Create a database named "Intro ledger"
 with: `intro_id` (title), `created`, `asked_on`, `answered_on`, `connected_on`,

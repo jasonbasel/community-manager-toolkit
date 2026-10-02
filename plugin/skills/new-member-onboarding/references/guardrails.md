@@ -75,6 +75,8 @@ sexual orientation, and the recipient took offence.*
 - When an organisation's name itself signals one of these, describe it neutrally by what
   it does ("a founder network", "a charity", "a travel company") or leave it out. The
   member can say more themselves.
+- Never record these attributes in the member directory, its tags or the ledger, even
+  when a source holds them.
 - Check every reason line and every message against this rule before showing it.
 
 ## 6. Sales-intent screen
@@ -131,25 +133,31 @@ Screen every intro request before searching for candidates.
 - Draft messages only to people who have opted into the community's communications:
   members, people who registered for the event (event messages only), and people who
   asked to be contacted.
-- Never draft outreach to people found in a CRM, spreadsheet or chat export who aren't
-  members or haven't opted in, or to anyone who has opted out.
+- Never draft outreach to people found in a CRM, spreadsheet, email list, chat export,
+  Slack or Discord server or LinkedIn connections who aren't members or haven't opted in,
+  or to anyone who has opted out.
 - Non-member event guests get event messages only, never onboarding or re-engagement.
-- If opt-in status is unknown, ask the manager before drafting.
+- Apply the Community profile's "who can be messaged" rule and the member directory's
+  `opted_in` column. If opt-in status is still unknown, ask the manager before drafting.
 
 ## 11. Data minimisation
 
 - Read only the fields the task needs: name, organisation, role, location, what they
   want, what they offer, last active, and joined date or event status where relevant.
-- Never output phone numbers or email addresses in reports, tables, the ledger or
-  anything shareable. Contact details stay in the source system. The only place they
-  appear is the recipient field of a draft the manager asked you to create in their own
-  email or chat tool, after both people said yes.
+- Never output phone numbers or email addresses in reports, tables, the ledger, the
+  member directory or anything shareable. Contact details stay in the source system; the
+  directory keeps only `email_domain` and `source_ids`. The only place they appear is the
+  recipient field of a draft the manager asked you to create in their own email or chat
+  tool, after both people said yes.
 - Don't copy full records, notes or chat messages into outputs; summarise in a line.
-- Don't quote members back (from a chat export, notes or registration answers) unless
-  it's needed for the task and the manager agrees.
+- Don't quote members back (from a chat export, Slack or Discord messages, meeting notes,
+  form or registration answers) unless it's needed for the task and the manager agrees.
 - Name members in reports only when the manager confirms they're happy to be named.
 - Don't research members or guests on the web, or open their LinkedIn profiles, unless
   the manager explicitly asks for that person. Never scrape LinkedIn.
+- Collect data only through connectors, the platform's own exports or tools the manager
+  already runs. Never self-bots, scrapers, browser automation of a personal account or
+  anything else against a platform's terms.
 
 ## 12. Removal and opt-out requests
 
@@ -172,8 +180,8 @@ Screen every intro request before searching for candidates.
 - Never invent profile facts, asks, offers, quotes, outcomes or ratings. A gap is shown
   as a gap.
 - Never tell anyone "[name] asked for you" unless that person asked or said yes.
-- Label anything inferred ("organisation taken from email domain") and confirm it before
-  it goes into a message.
+- Label anything inferred ("organisation taken from email domain"; in the member
+  directory, list it in `inferred_fields`) and confirm it before it goes into a message.
 - Figures quoted by this toolkit come from one ~850-member professional network. Always
   label them that way; they are not benchmarks.
 - Don't claim causes you can't show ("retention rose because of introductions").

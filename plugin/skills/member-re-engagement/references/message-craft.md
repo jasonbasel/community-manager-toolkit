@@ -1,11 +1,13 @@
 # Message craft
 
 How to write every member-facing message this toolkit drafts: the writing rules first,
-then the evidence behind them, then ready-to-use templates.
+then channel formats, then the evidence behind the rules, then ready-to-use templates.
 
 Templates are a starting shape, not a script. Fill every [square-bracket] variable with
-real details or cut the phrase. Write in the manager's voice, in the first person, and
-match the manager's spelling (UK or US), formality and language.
+real details or cut the phrase. Write in the manager's voice and in the first person.
+Member-facing drafts use the Community profile's language and its word for members
+(fellows, alumni, founders) wherever a template says "members" or "community"; without a
+profile, match the manager's spelling (UK or US), formality and language.
 
 ## Writing rules
 
@@ -38,6 +40,26 @@ match the manager's spelling (UK or US), formality and language.
     yet" or "didn't connect", one last check a week later. Nothing after that.
 12. **Write as the manager.** First person, the manager's name, the community's tone. No
     emojis unless the manager uses them. Never pretend a message is from someone else.
+
+## Channels
+
+Format every draft for the channel the member will read it on: the one the manager names
+for this batch, else the Community profile's main channel. If neither says, write plain
+chat text (it works in WhatsApp, SMS and a DM) and say so. The templates below are
+written for chat; adapt them like this.
+
+| Channel | Format |
+|---|---|
+| WhatsApp | Plain text, no markdown: no bold, headings, bullet symbols or tables. Numbered options on their own lines are fine. Under ~500 characters. If the manager sends through a WhatsApp Business account, a first message after 24 hours of silence must be an approved template (1,024 characters at most, variables included), so keep the fixed wording reusable. |
+| SMS | Plain text, shorter still: aim for under ~300 characters. No link unless the message needs one. |
+| Email | A specific subject line, then a short body (under ~120 words), one question, the profile's sign-off. A connection email goes to both people in To: (template 4). Never a group send or BCC list. |
+| Slack or Discord DM | Short and conversational, two to four lines, no @here, @channel or @everyone. A connection message goes in a group DM with both people, after both said yes. A post in a channel is a broadcast, not a personal message. |
+| LinkedIn | Only for people already in the community. A connection note stays under ~300 characters: who, the reason, one question. Messages stay short. Never automated, never bulk. |
+
+- Put each draft in its own plain text block so it copies cleanly, with the recipient
+  and the channel above it.
+- One channel per message. Don't send the same ask on two channels.
+- Same rules everywhere else: a named person, one question, no feature tour.
 
 ## Why these rules exist
 

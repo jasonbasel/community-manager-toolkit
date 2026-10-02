@@ -1,8 +1,8 @@
 {
   "name": "community-manager-toolkit",
   "displayName": "Community Manager Toolkit",
-  "version": "0.1.0",
-  "description": "Introductions, event matchmaking and impact reports for community managers.",
+  "version": "0.2.0",
+  "description": "Introductions, event matchmaking, a member directory, a weekly review and impact reports for community managers. Works with your CRM, Slack, Discord, sheets, forms and email tools.",
   "author": {
     "name": "Jason Basel",
     "email": "jason@communitylab.ai",
@@ -29,6 +29,23 @@
     "professional network",
     "association",
     "alumni",
-    "WhatsApp community"
+    "WhatsApp community",
+    "CRM",
+    "HubSpot",
+    "Salesforce",
+    "Attio",
+    "Pipedrive",
+    "Affinity",
+    "Zoho CRM",
+    "Airtable",
+    "Notion",
+    "Google Sheets",
+    "Excel",
+    "Slack",
+    "Discord",
+    "Mailchimp",
+    "member directory",
+    "member database",
+    "weekly review"
   ]
 }

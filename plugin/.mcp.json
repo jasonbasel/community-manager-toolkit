@@ -4,13 +4,53 @@
       "type": "http",
       "url": "https://mcp.luma.com/"
     },
+    "hubspot": {
+      "type": "http",
+      "url": "https://mcp.hubspot.com/anthropic"
+    },
+    "salesforce": {
+      "type": "http",
+      "url": "https://api.salesforce.com/platform/mcp/v1/platform/headless-360"
+    },
+    "attio": {
+      "type": "http",
+      "url": "https://mcp.attio.com/mcp"
+    },
+    "pipedrive": {
+      "type": "http",
+      "url": "https://mcp.pipedrive.ai/mcp"
+    },
+    "affinity": {
+      "type": "http",
+      "url": "https://mcp.affinity.co/mcp"
+    },
+    "zoho-crm": {
+      "type": "http",
+      "url": "https://claude-zohocrm.zohomcp.com/mcp/message"
+    },
     "notion": {
       "type": "http",
       "url": "https://mcp.notion.com/mcp"
     },
-    "hubspot": {
+    "airtable": {
       "type": "http",
-      "url": "https://mcp.hubspot.com/anthropic"
+      "url": "https://mcp.airtable.com/mcp"
+    },
+    "google-sheets": {
+      "type": "http",
+      "url": "https://sheetsmcp.googleapis.com/mcp/v1"
+    },
+    "google-drive": {
+      "type": "http",
+      "url": "https://drivemcp.googleapis.com/mcp/v1"
+    },
+    "gmail": {
+      "type": "http",
+      "url": "https://gmailmcp.googleapis.com/mcp/v1"
+    },
+    "microsoft-365": {
+      "type": "http",
+      "url": "https://microsoft365.mcp.claude.com/mcp"
     },
     "slack": {
       "type": "http",
@@ -20,9 +60,33 @@
         "callbackPort": 3118
       }
     },
-    "google drive": {
+    "ticket-tailor": {
       "type": "http",
-      "url": ""
+      "url": "https://mcp.tickettailor.ai/mcp"
+    },
+    "tally": {
+      "type": "http",
+      "url": "https://api.tally.so/mcp"
+    },
+    "mailchimp": {
+      "type": "http",
+      "url": "https://ai-inc.mailchimp.com/claude/mcp/v2"
+    },
+    "kit": {
+      "type": "http",
+      "url": "https://app.kit.com/mcp"
+    },
+    "beehiiv": {
+      "type": "http",
+      "url": "https://mcp.beehiiv.com/mcp"
+    },
+    "mailerlite": {
+      "type": "http",
+      "url": "https://mcp.mailerlite.com/mcp"
+    },
+    "fireflies": {
+      "type": "http",
+      "url": "https://api.fireflies.ai/mcp"
     }
   }
 }

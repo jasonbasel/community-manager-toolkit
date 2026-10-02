@@ -380,3 +380,124 @@ Checks (scripted where possible; LLM-judged against a rubric otherwise):
    when asked to "message all inactive members".
 6. With-vs-without comparison: the same prompts run with and without the plugin; the
    plugin must win on the rubric for each skill.
+
+---
+
+# v0.2 additions (2 Oct 2026)
+
+Goal from Jason: more intuitive, easier to use, more flexible, and able to use many more
+data sources. Sources to go deepest on: **CRMs** (HubSpot, Salesforce, Attio, Pipedrive,
+Affinity, Zoho), **Slack and Discord** (the only community platforms in scope), and
+**sheets, forms and email tools** (Airtable, Google Sheets, Excel, Notion databases;
+Typeform, Tally, Google Forms, Jotform; Mailchimp, Kit, beehiiv, MailerLite). Association
+systems are out of scope. A hosted connector follows in Phase B; v0.2 stays skills-only
+but must work well with or without it.
+
+## A1. Three new skills
+
+### `getting-started` (entry point)
+Triggers: what can you do, help, get started, set up, how do I use this, I run a
+community, any vague community-management ask that no other skill clearly owns.
+1. Show the eight jobs as a short menu, each with one example prompt to copy.
+2. Check which tools are connected and recommend the two or three that matter for their
+   stack (from `references/platform-guide.md`).
+3. Run a setup of at most two short batches of questions, defaults stated:
+   community name, type and size; what members are called (members, fellows, alumni,
+   founders, guests); where member records live; where events live; the channel(s) used
+   to message members (WhatsApp, email, Slack, Discord, LinkedIn, SMS); who can be
+   messaged (opt-in rule); voice and sign-off; where to keep the intro ledger and member
+   directory; the community's language.
+4. Write the **Community profile** (`references/community-profile.md` has the template)
+   and offer to save it where the other skills can find it: a Notion page or Google Doc
+   titled "Community profile", a file in the project, or the project's instructions.
+5. End with one recommended first action based on what it found (e.g. an event in the
+   next 14 days → event matchmaking; no member directory → member directory).
+
+### `member-directory` (unify member data)
+Triggers: member directory, member database, combine or clean member data, merge the CRM
+with Slack or Discord, dedupe members, import members, profile gaps, who's in my
+community.
+1. Inventory sources (connected tools and uploaded files) and say what each is good for.
+2. Show a field-mapping table per source (source column → canonical field) and get one
+   confirmation for all of them. Map by meaning; column names vary.
+3. Normalise names, organisations (strip Ltd/Inc, map email domain → org where clear),
+   dates and locations.
+4. De-duplicate: exact email or source-ID match first, then name + organisation; list
+   uncertain matches for the manager instead of merging them.
+5. Merge with precedence: CRM for identity, organisation and role; application forms,
+   notes and meeting summaries for asks and offers; Slack, Discord, events and the ledger
+   for activity; the most recent value wins; keep provenance per field.
+6. Fill asks and offers from free text (bios, form answers, messages), labelled
+   `inferred`, never invented.
+7. Report coverage (share with organisation, role, asks, offers, last active, opt-in) and
+   the top gaps, with a gap plan: profile-ask drafts for the members who matter most
+   right now, plus two form questions to add.
+8. Write the directory to the manager's Notion, Google Sheet or Airtable, or return a CSV.
+   **No phone numbers or email addresses in the directory**: keep `email_domain` and
+   `source_ids` (e.g. `hubspot:123`, `slack:U0ABC`) so contact details stay in the
+   source system.
+9. Refresh mode ("update my directory"): re-read sources, show what changed, apply on
+   approval.
+
+Canonical directory columns: member_id, name, organisation, role, location,
+email_domain, source_ids, status (member / lapsed / prospect / guest), joined,
+last_active, last_active_source, asks, offers, tags (sector, stage, side), opted_in
+(yes / no / unknown), opt_in_source, profile_quality (full / partial / thin),
+inferred_fields, notes (removal and opt-out requests), updated.
+
+### `weekly-community-review` (what to do this week)
+Triggers: what should I do this week, weekly review, community to-do list, Monday plan,
+what's due, catch me up on my community.
+1. Read the Community profile, the ledger, the member directory, events in the next 14
+   days, new members in the last 30 days, and recent activity.
+2. Build at most seven prioritised items, each with why now, what it involves, and the
+   exact prompt to run it ("say: match the attendees for Thursday's dinner"):
+   intro answers overdue and lapse notices; follow-through and outcome checks due;
+   events in the next 14 days to match; new members not yet welcomed; a small
+   re-engagement batch; removal or opt-out requests to action; an impact report if a
+   month or quarter has just ended.
+3. Run a spacing check across everything proposed: no member gets more than one
+   proactive touch in the week, at least ~72 hours apart; say what it moved.
+4. Offer to draft any item.
+5. Explain how to run it on a schedule (the platform's scheduled tasks, e.g. every
+   Monday 08:30) and keep the output readable without the conversation.
+
+## A2. Changes to every skill
+- **Step 0:** look for the Community profile and the member directory first and use
+  them; never re-ask what they already say.
+- **Fewer questions:** at most three at once, only what blocks the next step; otherwise
+  use a default and say which.
+- **Summary first:** lead with the answer and the approval table; offer "show all"
+  for long detail.
+- **Channel-aware drafts:** format for the channel in the profile (WhatsApp/SMS: short,
+  plain text, no markdown; email: subject line + short body; Slack/Discord DM: short, no
+  @here; LinkedIn: under ~300 characters for connection notes). Rules in
+  `references/message-craft.md`.
+- **Community vocabulary and language:** use the profile's word for members and its
+  language in member-facing drafts; match the manager's language in replies.
+- **Source flexibility:** every skill points to `references/platform-guide.md` for
+  where data lives in each tool and how to read it.
+
+## A3. `references/platform-guide.md` (new shared reference)
+Per tool: whether an official connector exists, what to read (objects and fields),
+the activity signal, the consent/opt-in signal, the export path when there's no
+connector, and gotchas. Cover HubSpot, Salesforce, Attio, Pipedrive, Affinity, Zoho
+CRM, Slack, Discord, Airtable, Google Sheets, Excel, Notion databases, Typeform, Tally,
+Google Forms, Jotform, Mailchimp, Kit, beehiiv, MailerLite, Luma, Eventbrite, Ticket
+Tailor, RSVPify, meeting-notes tools (e.g. Fireflies), WhatsApp exports, LinkedIn
+connections export. Rules: map by meaning and show the mapping; email opens are not
+activity (privacy protection inflates them); never use self-bots, scrapers or anything
+against a platform's terms; Slack/Discord messages are signals, never quoted back.
+
+## A4. Connectors declared for Claude (`plugin/.mcp.json`)
+Official directory URLs only (from the registry, 2 Oct 2026): luma, hubspot, salesforce,
+attio, pipedrive, affinity, zoho-crm, notion, airtable, google-sheets, google-drive,
+gmail, microsoft-365, slack (with the standard oauth block), ticket-tailor, tally,
+mailchimp, kit, beehiiv, mailerlite, fireflies. Discord has no official connector.
+README and CONNECTORS.md must list every one and say all are optional.
+
+## A5. Evals
+Add fixtures and cases for the three new skills (vague first prompt; HubSpot-style CSV +
+Slack member export + Discord member list + application form responses with dedupe and
+inference traps; weekly review with a spacing conflict) and one channel-format case
+(WhatsApp vs email). Re-run all existing cases as a regression check.

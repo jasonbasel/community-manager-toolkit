@@ -1,6 +1,6 @@
 /** check_draft_message: channel and message-craft checks on a draft (DESIGN §4.7). Never stores or sends anything. */
 import { BROADCAST_PHRASES, GSM_BASIC, GSM_EXTENDED, LIMITS, PLAIN_TEXT_CHANNELS, VAGUE_CHECKIN_PHRASES } from "../data/messages.js";
-import { EMAIL_RE, findPhones, findSensitive, fold } from "../text/normalise.js";
+import { findEmails, findPhones, findSensitive, fold, isWhatsAppLink } from "../text/normalise.js";
 
 export type Channel = "whatsapp" | "sms" | "email" | "slack" | "discord" | "linkedin";
 export type Purpose = "consent_ask" | "connection" | "welcome" | "reengagement" | "event" | "followup" | "other";
@@ -59,10 +59,11 @@ export function checkDraftMessage(input: DraftInput) {
     else if (/(^|\s)\*[^*\n]+\*(?=\s|[.,!?;:]|$)/m.test(text)) md.push("*asterisk* emphasis");
     if (/(^|\s)_[^_\n]+_(?=\s|[.,!?;:]|$)/m.test(text)) md.push("_underscore_ emphasis");
     if (/^\s{0,3}#{1,6}\s/m.test(text)) md.push("headings (#)");
-    if (/\[[^\]\n]+\]\([^)\s]+\)/.test(text)) md.push("markdown links [text](url)");
+    // Line-start patterns use [ \t] (never \s, which crosses newlines) and link text excludes "[", so every check stays linear.
+    if (/\[[^[\]\n]{1,500}\]\([^()[\]\s]{1,2000}\)/.test(text)) md.push("markdown links [text](url)");
     if (/`[^`\n]+`|```/.test(text)) md.push("code formatting (`)");
-    if (/^\s*([-*•+]|\d+[.)])\s+\S/m.test(text)) md.push("list bullets");
-    if (/^\s*\|.*\|\s*$/m.test(text) || /\|\s*:?-{3,}/.test(text)) md.push("a table");
+    if (/^[ \t]*(?:[-*•+]|\d{1,9}[.)])[ \t]+\S/m.test(text)) md.push("list bullets");
+    if (/^[ \t]*\|[^\n]*\|[ \t]*$/m.test(text) || /\|[ \t]*:?-{3,}/.test(text)) md.push("a table");
     if (/~~[^~\n]+~~/.test(text)) md.push("strikethrough (~~)");
     if (md.length) add("warning", "markdown", `${name} shows text as typed: remove ${md.join(", ")}. Use plain sentences.`);
   }
@@ -77,10 +78,12 @@ export function checkDraftMessage(input: DraftInput) {
   if (ph.length) add("error", "placeholders", `Unfilled placeholder${ph.length > 1 ? "s" : ""}: ${ph.slice(0, 5).join(", ")}.`);
 
   // contact details in a consent ask
-  const hasEmail = (text.match(EMAIL_RE) ?? []).length > 0, hasPhone = findPhones(text).length > 0;
-  if (purpose === "consent_ask" && (hasEmail || hasPhone)) {
-    add("error", "contact_details", `The consent ask contains ${[hasEmail && "an email address", hasPhone && "a phone number"].filter(Boolean).join(" and ")}. Share contact details only after both people say yes.`);
-  } else if ((hasEmail || hasPhone) && (channel === "slack" || channel === "discord")) {
+  const phones = findPhones(text);
+  const hasEmail = findEmails(text).length > 0, hasPhone = phones.some((p) => !isWhatsAppLink(p)), hasWaLink = phones.some(isWhatsAppLink);
+  if (purpose === "consent_ask" && (hasEmail || hasPhone || hasWaLink)) {
+    const found = [hasEmail && "an email address", hasPhone && "a phone number", hasWaLink && "a WhatsApp link (it carries a phone number)"].filter(Boolean) as string[];
+    add("error", "contact_details", `The consent ask contains ${found.length > 1 ? `${found.slice(0, -1).join(", ")} and ${found[found.length - 1]}` : found[0]}. Share contact details only after both people say yes.`);
+  } else if ((hasEmail || hasPhone || hasWaLink) && (channel === "slack" || channel === "discord")) {
     add("info", "contact_details", "Contains contact details: check both people agreed to share them.");
   }
 

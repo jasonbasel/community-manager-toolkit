@@ -14,6 +14,8 @@ export const CONFIG = {
   publicMcpUrl: process.env.PUBLIC_MCP_URL ?? `${SERVICE.website}/mcp`,
   /** Requests per IP per minute (in memory, per instance). */
   rateLimitPerMin: num(process.env.RATE_LIMIT_PER_MIN, 600),
+  /** Most clients tracked by the rate limiter at once (least recently seen evicted first). */
+  rateLimitMaxKeys: num(process.env.RATE_LIMIT_MAX_KEYS, 10_000),
   /** Proxies in front of the service that append to X-Forwarded-For (Cloud Run: 1; Firebase Hosting in front: 2). */
   trustedProxyHops: num(process.env.TRUSTED_PROXY_HOPS, 1),
   maxBodyBytes: 2 * 1024 * 1024,

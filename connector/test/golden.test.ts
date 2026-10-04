@@ -166,7 +166,10 @@ describe.runIf(["ledger.csv", "members.csv", "events_upcoming.csv"].every(hasFix
   it("has at most seven items covering overdue asks, checks, events, welcomes and the Q3 report", () => {
     expect(out.items.length).toBeLessThanOrEqual(7);
     const ids = out.items.flatMap((i) => i.intro_ids ?? []);
-    for (const id of ["20260916-reshma-clementine", "20260924-odalys-saoirse", "20260805-evander-zuleikha", "20260820-caspian-anselm", "20260716-esme-beatrix", "20260810-leopold-desmond"]) expect(ids, id).toContain(id);
+    for (const id of ["20260916-reshma-clementine", "20260924-odalys-saoirse", "20260820-caspian-anselm", "20260716-esme-beatrix", "20260810-leopold-desmond"]) expect(ids, id).toContain(id);
+    // Evander and Zuleikha both get the Dinner invitation this week, so their follow-through moves (traced in held) and is not in any item.
+    expect(ids).not.toContain("20260805-evander-zuleikha");
+    expect(out.held.filter((h) => h.intro_ids?.includes("20260805-evander-zuleikha")).map((h) => `${h.person}:${h.until}`).sort()).toEqual(["Evander Kimathi:2026-10-10", "Zuleikha Rahimi-Stone:2026-10-10"]);
     expect(out.items.map((i) => i.kind)).toEqual(expect.arrayContaining(["lapse_notices", "checks_due", "event_matching", "event_invitations", "welcomes"]));
     const all = [...out.items.map((i) => i.title), ...out.held.map((h) => h.item)].join(" ");
     expect(all).toMatch(/Q3 2026/);

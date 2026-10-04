@@ -1,12 +1,13 @@
 /* Directory review for merge_member_records: stats, coverage, uncertain matches sent back as one message. */
-import { connect, copyText, csvCell, esc, resultText, sendToChat, type ToolResultParams } from "./shared.js";
+import { connect, copyText, esc, resultText, sendToChat, type ToolResultParams } from "./shared.js";
+import { csvCell, decisionsMessage, type Decision } from "./text.js";
 
 type Ref = { id: string; name: string; organisation: string; sources: string[] };
 type Uncertain = { a: Ref; b: Ref | null; kind: string; reason: string; score: number };
 type Member = Record<string, unknown> & { member_id: string; name: string; organisation: string; role: string; location: string; last_active: string; opted_in: string; profile_quality: string };
 type Payload = {
   members: Member[]; uncertain_matches: Uncertain[];
-  stats: { input_records: number; unique_members: number; merged: number; unresolved_accounts: number; by_source: Record<string, number>; coverage: Record<string, number> };
+  stats: { input_records: number; unique_members: number; merged: number; unresolved_accounts: number; uncertain_total?: number; by_source: Record<string, number>; coverage: Record<string, number> };
   gaps: { member_id: string; name: string; missing: string[]; why: string }[];
 };
 
@@ -30,7 +31,7 @@ function render(): void {
       <div class="stat"><div class="v">${s.unresolved_accounts}</div><div class="l">Unresolved chat accounts</div></div>
     </div>
     <h2>Coverage</h2><div class="panel">${Object.entries(s.coverage).map(([k, v]) => `<div class="bar"><span>${esc(COV_LABEL[k] ?? k)}</span><span class="track"><span class="fill" style="width:${v}%"></span></span><span class="val">${v}%</span></div>`).join("")}</div>
-    ${data.uncertain_matches.length ? `<h2>Uncertain matches (${data.uncertain_matches.length})</h2>
+    ${data.uncertain_matches.length ? `<h2>Uncertain matches (${(s.uncertain_total ?? 0) > data.uncertain_matches.length ? `strongest ${data.uncertain_matches.length} of ${s.uncertain_total}` : data.uncertain_matches.length})</h2>
       <table><thead><tr><th>Record</th><th>Possible match</th><th class="hide-sm">Why</th><th>Your call</th></tr></thead><tbody>
       ${data.uncertain_matches.map((u, i) => `<tr><td>${who(u.a)}</td><td>${u.b ? who(u.b) : '<span class="muted">no candidate</span>'}</td><td class="small hide-sm">${esc(u.reason)}</td>
         <td>${u.b ? `<span class="choice"><label><input type="radio" name="c${i}" value="same" ${choice.get(i) === "same" ? "checked" : ""} ${sent ? "disabled" : ""}> same person</label>
@@ -56,20 +57,9 @@ function render(): void {
 }
 
 function decisionsText(): string {
-  const same: string[] = [], diff: string[] = [], json: string[] = [];
-  data!.uncertain_matches.forEach((u, i) => {
-    const c = choice.get(i);
-    if (!c || !u.b) return;
-    (c === "same" ? same : diff).push(`${u.a.name} (${u.a.sources.join(", ")}) ${c === "same" ? "=" : "≠"} ${u.b.name}${u.b.organisation ? `, ${u.b.organisation}` : ""}`);
-    json.push(`{"a":"${u.a.id}","b":"${u.b.id}","same":${c === "same"}}`);
-  });
-  return [
-    "My decisions on the uncertain directory matches:",
-    ...(same.length ? ["Same person:", ...same.map((x) => `- ${x}`)] : []),
-    ...(diff.length ? ["Different people:", ...diff.map((x) => `- ${x}`)] : []),
-    `Decisions: [${json.join(", ")}]`,
-    "Please update the directory with these decisions.",
-  ].join("\n");
+  const choices: Decision[] = [];
+  data!.uncertain_matches.forEach((u, i) => { const c = choice.get(i); if (c && u.b) choices.push({ a: u.a, b: u.b, same: c === "same" }); });
+  return decisionsMessage(choices);
 }
 
 function directoryCsv(): string {

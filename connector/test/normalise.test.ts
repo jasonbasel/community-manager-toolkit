@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  displayOrg, emailParts, findPhones, findSensitive, firstNameRelation, isEmailLike, isPhoneLike, jaroWinkler, nameKey, orgKey, parseDate,
-  parseInstant, scrubContacts, tidyName, toList,
+  displayOrg, emailParts, findEmails, findPhones, findSensitive, firstNameRelation, idContactKind, isEmailLike, isPhoneLike, isPlaceholderName, jaroWinkler,
+  nameKey, orgKey, parseDate, parseInstant, scrubContacts, tidyName, toList,
 } from "../src/text/normalise.js";
+import { rng } from "./helpers/synthetic.js";
 import { keywords, singular } from "../src/text/keywords.js";
 
 describe("organisations", () => {
@@ -104,5 +105,60 @@ describe("sensitive terms and keywords", () => {
     expect(toList("a; b, c\nd")).toEqual(["a", "b, c", "d"]);
     expect(toList(["x", " y "])).toEqual(["x", "y"]);
     expect(toList(null)).toEqual([]);
+  });
+});
+
+describe("emails in linear time (review finding 10)", () => {
+  const OLD = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+  it("finds exactly what the old regex found, on 20,000 random strings", () => {
+    const r = rng(7);
+    const alphabet = ["a", "b", "Z", "1", ".", "-", "_", "+", "%", "@", "@", " ", ",", "c", "o", "m", "é"];
+    for (let n = 0; n < 20000; n++) {
+      const s = Array.from({ length: 1 + Math.floor(r() * 24) }, () => alphabet[Math.floor(r() * alphabet.length)]).join("");
+      const old = [...s.matchAll(OLD)].map((m) => [m.index, m.index + m[0].length]);
+      expect(findEmails(s).map((e) => [e.start, e.end]), JSON.stringify(s)).toEqual(old);
+    }
+  });
+  it("handles glued and repeated addresses like the old regex", () => {
+    expect(scrubContacts("a@b.com-x@y.com").text).toBe("[email removed][email removed]");
+    expect(isEmailLike("Contact: jane.doe+cmt@example.co.uk")).toBe(true);
+    expect(isEmailLike("@ the office, see you")).toBe(false);
+  });
+  it("worst-case inputs finish in under 100 ms (500 fields of 4,000 characters)", () => {
+    const fields = ["a", "a@", "a.", "@a.", "a@a.", "+1", "1 ", "1-", "0", "(0", "00", "wa.me/1 "].map((u) => u.repeat(Math.ceil(4000 / u.length)).slice(0, 4000));
+    for (const f of fields) scrubContacts(f); // warm up
+    const t0 = performance.now();
+    for (let i = 0; i < 500; i++) { const f = fields[i % fields.length]; scrubContacts(f); isEmailLike(f); }
+    expect(performance.now() - t0).toBeLessThan(100);
+  });
+});
+
+describe("phone numbers (review finding 9)", () => {
+  it("finds WhatsApp links, international numbers without + and US numbers without separators", () => {
+    for (const t of ["chat on wa.me/447700900123 today", "https://wa.me/447700900123?text=hi", "api.whatsapp.com/send?phone=447700900123", "wa.me/message/ABCDEF",
+      "call 0044 7700 900123", "call 44 7700 900123", "call 447700900123", "call 4155550100", "call 14155550100", "call 1-415-555-0100", "call 353 87 123 4567"]) {
+      expect(findPhones(t), t).not.toEqual([]);
+      expect(scrubContacts(t).text, t).not.toMatch(/\d{3}|wa\.me|whatsapp/);
+    }
+  });
+  it("leaves dates, years, short IDs, platform IDs and grouped numbers alone", () => {
+    for (const t of ["on 2026-09-27", "on 20260927", "since 2026", "ref 123456", "HubSpot 51203400243", "Discord 113693792436467651", "raised 1 000 000 000",
+      "tables 12 14 16 18 20 22", "at 2026-09-27T17:29:00Z", "27.09.2026 17.30", "IP 192.168.100.200", "epoch 1790000000", "epoch ms 1790000000000",
+      "rooms 101 102 103 104", "ottawa.me/events", "order gst-4155550100"]) expect(findPhones(t), t).toEqual([]);
+  });
+  it("treats contact details as unsafe IDs, but bare platform numbers as IDs", () => {
+    for (const id of ["415-555-0100", "(415) 555-0100", "+44 7700 900123", "07700900123", "44 7700 900123", "wa.me/447700900123", "jane@example.com", "https://linkedin.com/in/jane", "linkedin.com/in/jane"])
+      expect(idContactKind(id), id).not.toBeNull();
+    for (const id of ["4155550100", "51203400243", "113693792436467651", "U0ABC123", "2026-09-30", "gst-4155550100", "Sam Patel", "m_abcdefghij"]) expect(idContactKind(id), id).toBeNull();
+    expect(idContactKind("447700900123", { source: "whatsapp" })).toBe("phone");
+    expect(idContactKind("@jane", { handles: true })).toBe("handle");
+    expect(idContactKind("@jane")).toBeNull();
+  });
+});
+
+describe("placeholder names (review finding 1)", () => {
+  it("recognises names that identify nobody", () => {
+    for (const n of ["", "unknown", "n a", "na", "test", "test user", "x", "a b", "j s", "guest 12", "no name", "john doe", "123"]) expect(isPlaceholderName(n), n).toBe(true);
+    for (const n of ["sam patel", "xi", "jo bloggs", "barn", "night owl", "sam p", "julia guest"]) expect(isPlaceholderName(n), n).toBe(false);
   });
 });

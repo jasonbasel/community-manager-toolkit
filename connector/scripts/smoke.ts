@@ -1,8 +1,10 @@
 /**
- * Smoke test over real HTTP. Starts the built server on a free port (or uses the URL given as the
- * first argument), then: checks the pages and /healthz, lists tools and ui:// resources with an
- * MCP client over Streamable HTTP, reads each view and calls every tool. Exits non-zero on failure.
+ * Smoke test over real HTTP. Starts the built server on PORT if set (it must be free), otherwise on
+ * a free ephemeral port, or uses the URL given as the first argument. Then: checks the pages and
+ * /healthz, lists tools and ui:// resources with an MCP client over Streamable HTTP, reads each view
+ * and calls every tool. Exits non-zero on failure. It never drives a local server it did not start.
  *   npm run smoke                      # local: node dist/server.js on a free port
+ *   PORT=8799 npm run smoke            # local, on a chosen port
  *   npm run smoke -- https://toolkit.commonos.ai
  */
 import { spawn, type ChildProcess } from "node:child_process";
@@ -19,15 +21,19 @@ let failures = 0;
 const ok = (cond: unknown, label: string) => { console.log(`${cond ? "ok  " : "FAIL"} ${label}`); if (!cond) failures++; };
 
 const freePort = () => new Promise<number>((res, rej) => { const s = createServer(); s.listen(0, () => { const p = (s.address() as { port: number }).port; s.close(() => res(p)); }); s.on("error", rej); });
+const portIsFree = (port: number) => new Promise<boolean>((res) => { const s = createServer(); s.once("error", () => res(false)); s.listen(port, "0.0.0.0", () => s.close(() => res(true))); });
 
 async function startLocal(): Promise<{ base: string; child: ChildProcess }> {
-  const port = await freePort();
+  const wanted = Number(process.env.PORT);
+  if (wanted > 0 && !(await portIsFree(wanted))) throw new Error(`PORT ${wanted} is already in use; pick a free port or unset PORT for an ephemeral one`);
+  const port = wanted > 0 ? wanted : await freePort();
   const entry = join(root, "dist", "server.js");
   const [cmd, args] = existsSync(entry) ? [process.execPath, [entry]] : [process.execPath, [join(root, "node_modules", "tsx", "dist", "cli.mjs"), join(root, "src", "server.ts")]];
   const child = spawn(cmd, args, { cwd: root, env: { ...process.env, PORT: String(port), CMT_LOG: "off" }, stdio: ["ignore", "ignore", "inherit"] });
   const base = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i++) {
-    try { if ((await fetch(`${base}/healthz`)).ok) return { base, child }; } catch { /* starting */ }
+    if (child.exitCode !== null) throw new Error(`server exited with code ${child.exitCode} before it was ready (port ${port})`);
+    try { if ((await fetch(`${base}/healthz`)).ok && child.exitCode === null) return { base, child }; } catch { /* starting */ }
     await new Promise((r) => setTimeout(r, 100));
   }
   child.kill();
@@ -35,7 +41,11 @@ async function startLocal(): Promise<{ base: string; child: ChildProcess }> {
 }
 
 const remote = process.argv[2];
-const { base, child } = remote ? { base: remote.replace(/\/$/, ""), child: null } : await startLocal();
+const { base, child } = remote ? { base: remote.replace(/\/$/, ""), child: null } : await startLocal().catch((e: Error) => {
+  console.log(`FAIL ${e.message}`);
+  console.log("smoke: could not start the local server");
+  process.exit(1);
+});
 console.log(`smoke: ${base}${child ? " (local server started by this script)" : ""}`);
 try {
   // ---- pages and health ----

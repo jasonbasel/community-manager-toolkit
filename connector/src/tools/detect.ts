@@ -5,7 +5,7 @@ import {
 } from "../fields/aliases.js";
 import { GENERIC_FORM, GENERIC_SHEET, PLATFORMS, type Platform } from "../fields/platforms.js";
 import { OPT_IN_NO, OPT_IN_YES, STATUS_VALUES, DEACTIVATED_VALUES } from "../data/sources.js";
-import { fold, isEmailLike, isPhoneLike, plain } from "../text/normalise.js";
+import { fold, isEmailLike, isPhoneLike, isUrlLike, parseDate, plain } from "../text/normalise.js";
 import { InputError } from "./errors.js";
 
 export interface DetectInput {
@@ -105,11 +105,16 @@ function dateFormat(values: string[]): MappingEntry["date_format"] | undefined {
 }
 
 const truthy = (v: string) => ["1", "true", "yes", "y", "x", "checked"].includes(v);
+/** Values that must never be returned (the schema promises sample values are not echoed; category labels are). */
+const contactLike = (v: string) => isEmailLike(v) || isPhoneLike(v) || isUrlLike(v);
+const returnable = (raw: string) => !!raw && raw.length <= 40 && !contactLike(raw);
+/** A header cell that is really data: a contact detail, a number, a date or a yes/no. */
+const dataLike = (h: string) => contactLike(h) || /^[\d\s.,:/+\-()%£$€]+$/.test(h) || parseDate(h) !== null || /^(?:true|false|yes|no)$/i.test(h);
 
 function optInValues(values: string[], inverted: boolean, preset?: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const raw of [...new Set(values.map((v) => v.trim()))].slice(0, 12)) {
-    if (!raw || raw.length > 40 || isEmailLike(raw) || isPhoneLike(raw)) continue;
+    if (!returnable(raw)) continue;
     const v = fold(raw);
     const p = preset?.[v];
     if (p) out[raw] = p;
@@ -122,7 +127,7 @@ function optInValues(values: string[], inverted: boolean, preset?: Record<string
 function statusValues(values: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const raw of [...new Set(values.map((v) => v.trim()))].slice(0, 12)) {
-    if (!raw || raw.length > 40 || isEmailLike(raw)) continue;
+    if (!returnable(raw)) continue;
     const v = fold(raw);
     out[raw] = DEACTIVATED_VALUES.includes(v) ? "deactivated account (note only)" : STATUS_VALUES[v] ?? "not recognised (left blank)";
   }
@@ -130,30 +135,36 @@ function statusValues(values: string[]): Record<string, string> {
 }
 
 export function detectMemberFields(input: DetectInput): DetectOutput {
-  const raws = input.headers.map((h) => String(h ?? "").trim());
-  raws.forEach((h, i) => { if (!h) throw new InputError(`headers[${i}] is empty; pass the header text exactly as it appears in the export`); });
+  const given = input.headers.map((h) => String(h ?? "").trim());
+  given.forEach((h, i) => { if (!h) throw new InputError(`headers[${i}] is empty; pass the header text exactly as it appears in the export`); });
+  const sourceName = isEmailLike(input.source_name) || isPhoneLike(input.source_name) ? "(source name not shown: it looks like a contact detail)" : input.source_name;
+  // A header row that holds a contact detail, or is mostly numbers and dates, is the first data row of an export
+  // with no header row: never echo it. Columns are then named by position and that row is read as a sample.
+  const headerless = given.some(contactLike) || given.filter(dataLike).length >= Math.max(2, Math.ceil(given.length / 2));
+  const raws = headerless ? given.map((_h, i) => `column ${i + 1}`) : given;
   // Disambiguate duplicate headers so every column is reported once.
   const seen = new Map<string, number>();
   const cols = raws.map((h) => { const n = (seen.get(h) ?? 0) + 1; seen.set(h, n); return n > 1 ? `${h} (${n})` : h; });
   const keys = raws.map(hkey);
-  const rows = (input.sample_rows ?? []).map((row, ri) => {
+  const rows = [...(headerless ? [given] : []), ...(input.sample_rows ?? [])].map((row, ri) => {
     if (Array.isArray(row)) {
-      if (row.length > raws.length + 5) throw new InputError(`sample_rows[${ri}] has ${row.length} cells but there are ${raws.length} headers`);
+      if (row.length > raws.length + 5) throw new InputError(`sample_rows[${ri - (headerless ? 1 : 0)}] has ${row.length} cells but there are ${raws.length} headers`);
       return raws.map((_h, i) => String(row[i] ?? "").slice(0, 300));
     }
-    return raws.map((h) => String((row as Record<string, unknown>)[h] ?? "").slice(0, 300));
+    return given.map((h) => String((row as Record<string, unknown>)[h] ?? "").slice(0, 300));
   });
   const colValues = (i: number) => rows.map((r) => r[i] ?? "").filter((v) => v.trim() !== "");
 
   // ---- platform ----
   let best: { p: Platform | null; conf: number; evidence: string[] } = { p: null, conf: 0, evidence: [] };
-  for (const p of PLATFORMS) {
+  for (const p of headerless ? [] : PLATFORMS) {
     const s = scorePlatform(p, keys, raws, input.source_name);
     if (s.conf > best.conf) best = { p, conf: s.conf, evidence: s.evidence };
   }
   const questionCols = keys.filter((k) => phraseField(k) !== null).length;
   let platform_guess: DetectOutput["platform_guess"];
-  if (best.p && best.conf >= 0.5) platform_guess = { id: best.p.id, name: best.p.name, confidence: round(best.conf), evidence: best.evidence.slice(0, 8) };
+  if (headerless) platform_guess = { id: GENERIC_SHEET.id, name: GENERIC_SHEET.name, confidence: 0.2, evidence: ["the first row looks like data, not column names"] };
+  else if (best.p && best.conf >= 0.5) platform_guess = { id: best.p.id, name: best.p.name, confidence: round(best.conf), evidence: best.evidence.slice(0, 8) };
   else if (keys.some((k) => /\b(approval status|registered at|ticket|checked in|rsvp|attendee)\b/.test(k)))
     platform_guess = { id: GENERIC_EVENT.id, name: GENERIC_EVENT.name, confidence: 0.55, evidence: raws.filter((_r, i) => /\b(approval status|registered at|ticket|checked in|rsvp|attendee)\b/.test(keys[i])).slice(0, 4) };
   else if (questionCols >= 2 || (questionCols >= 1 && keys.some((k) => /\b(submitted at|timestamp|submission date)\b/.test(k))))
@@ -250,6 +261,7 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
   }
 
   // ---- warnings ----
+  if (headerless) warnings.push("The first row looks like data (an email address, phone number, link or mostly numbers and dates), not column names: the export may have no header row. Columns are shown by position and that row's values are never returned; add the header row, or say what each column holds.");
   const fields = new Set(mapping.map((m) => m.field));
   if (!fields.has("name") && !(fields.has("first_name") || fields.has("last_name"))) warnings.push("No name column found: records without a name cannot be matched or paired.");
   if (!fields.has("email") && !fields.has("source_id")) warnings.push("No email or ID column: records can only be matched on name plus organisation.");
@@ -263,5 +275,5 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
   if (notActivity) warnings.push("Email opens and clicks are not activity (privacy protection inflates them).");
   for (const w of plat?.warnings ?? []) warnings.push(w);
 
-  return { source_name: input.source_name, platform_guess, mapping, unmapped, contact_columns, sensitive_columns, warnings: [...new Set(warnings)] };
+  return { source_name: sourceName, platform_guess, mapping, unmapped, contact_columns, sensitive_columns, warnings: [...new Set(warnings)] };
 }

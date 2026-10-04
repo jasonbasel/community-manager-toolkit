@@ -7,3 +7,5 @@ brand-fonts/
 *.log
 .DS_Store
 # note: .gcloudignore (tracked) decides what a Cloud Run source deploy uploads; it includes site/ and brand-fonts/
+# local environment files (never upload or commit them)
+.env*

@@ -58,5 +58,4 @@ export async function sendToChat(app: App, text: string, statusEl: HTMLElement):
   return false;
 }
 
-export const csvCell = (v: unknown): string => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
 export const pct = (n: number) => `${Math.round(n * 10) / 10}%`;

@@ -11,3 +11,5 @@ dist/
 test/
 *.log
 .DS_Store
+# local environment files (never upload or commit them)
+.env*

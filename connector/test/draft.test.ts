@@ -62,3 +62,24 @@ describe("message craft", () => {
     expect(r.stats).toMatchObject({ questions: 1, lines: 2 });
   });
 });
+
+describe("review findings 9 and 10", () => {
+  it("flags a WhatsApp link in a consent ask", () => {
+    const r = checkDraftMessage({ channel: "whatsapp", purpose: "consent_ask", text: "Odalys would like to meet you. Yes or no? Reply here or on wa.me/447700900114" });
+    const i = r.issues.find((x) => x.rule === "contact_details")!;
+    expect(i).toMatchObject({ severity: "error" });
+    expect(i.detail).toMatch(/a WhatsApp link/);
+    expect(JSON.stringify(r)).not.toMatch(/447700900114/);
+    expect(rules({ channel: "whatsapp", purpose: "consent_ask", text: "Shall I introduce you? Call 4155550100." })).toContain("error:contact_details");
+  });
+  it("checks worst-case 20,000-character drafts in under 100 ms each", () => {
+    const units = ["a", "\n", " \n", "[", "[a](", "*", " *a", "_", "|", "\n|", "- ", "1.", "a@", "@a.", "+1", "1 ", "0", "#", "`", "~", "wa.me/"];
+    const texts = units.map((u) => u.repeat(Math.ceil(20000 / u.length)).slice(0, 20000));
+    checkDraftMessage({ channel: "whatsapp", text: texts[0] }); // warm up
+    for (const [k, text] of texts.entries()) {
+      const t0 = performance.now();
+      checkDraftMessage({ channel: "whatsapp", purpose: "consent_ask", text });
+      expect(performance.now() - t0, JSON.stringify(units[k])).toBeLessThan(100);
+    }
+  });
+});

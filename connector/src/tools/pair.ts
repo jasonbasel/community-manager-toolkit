@@ -63,7 +63,8 @@ export function pairAttendees(input: PairInput) {
     if (j !== undefined) throw new InputError(`guests[${i}].id '${id}' is duplicated (also guests[${j}].id); every guest needs a unique id`);
     firstIndex.set(id, i);
   });
-  const exclude = new Set((input.exclude_ids ?? []).map(String));
+  // Trimmed exactly like guest ids, so "E " and "E" are the same guest.
+  const exclude = new Set((input.exclude_ids ?? []).map((x) => String(x ?? "").trim()).filter(Boolean));
   const unknownExcl = [...exclude].filter((id) => !firstIndex.has(id));
   if (unknownExcl.length) warnings.push(`${unknownExcl.length} exclude_ids are not in guests and were ignored.`);
   const removed = input.guests.map((g) => String(g.id).trim()).filter((id) => exclude.has(id)).sort(cmp);

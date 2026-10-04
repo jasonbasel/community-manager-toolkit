@@ -38,7 +38,8 @@ export function summariseMerge(o: MergeOutput): string {
     "No email addresses or phone numbers are included; source_ids and email_domain identify records instead.",
   ].filter(Boolean);
   if (o.uncertain_matches.length) {
-    lines.push(`Uncertain matches for the manager (${o.uncertain_matches.length}, never merged):`);
+    const total = o.stats.uncertain_total;
+    lines.push(`Uncertain matches for the manager (${total}${total > o.uncertain_matches.length ? `; the ${o.uncertain_matches.length} strongest are in the structured result` : ""}, never merged):`);
     const shown = o.uncertain_matches.slice(0, 40);
     for (const u of shown) lines.push(`- ${u.a.name} [${u.a.id}] ↔ ${u.b ? `${u.b.name} [${u.b.id}]` : "no candidate"} (${u.kind}, ${u.score}): ${u.reason}`);
     lines.push(more(o.uncertain_matches.length, shown.length).trim());

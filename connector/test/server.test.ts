@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { createApp } from "../src/app.js";
+import { clientKey, createApp, logRpc, RateLimiter, rateKey } from "../src/app.js";
 import { CONFIG } from "../src/config.js";
 import { TOOL_TEXT } from "../src/mcp.js";
 import { loadSite, siteDir } from "../src/site.js";
@@ -88,8 +88,8 @@ describe("service routes and limits", () => {
     const r = await post(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: { pad: "x".repeat(2 * 1024 * 1024 + 10) } }));
     expect(r.status).toBe(413);
   });
-  it("rate-limits per client IP (60/min by default) and exempts /healthz", async () => {
-    expect(CONFIG.rateLimitPerMin).toBe(60);
+  it("rate-limits per client IP (600/min by default, or RATE_LIMIT_PER_MIN) and exempts /healthz", async () => {
+    expect(CONFIG.rateLimitPerMin).toBe(Number(process.env.RATE_LIMIT_PER_MIN) > 0 ? Number(process.env.RATE_LIMIT_PER_MIN) : 600);
     const small = createApp({ rateLimitPerMin: 3, site: new Map() });
     const hit = (ip: string) => small.request("/nope", { headers: { "x-forwarded-for": `9.9.9.9, ${ip}` } });
     for (let i = 0; i < 3; i++) expect((await hit("1.1.1.1")).status).toBe(404);
@@ -98,6 +98,93 @@ describe("service routes and limits", () => {
     expect(Number(r.headers.get("retry-after"))).toBeGreaterThan(0);
     expect((await hit("2.2.2.2")).status).toBe(404);
     expect((await small.request("/healthz", { headers: { "x-forwarded-for": "1.1.1.1" } })).status).toBe(200);
+  });
+});
+
+describe("rate limiter (review finding 5)", () => {
+  it("stays bounded under 100,000 distinct keys", () => {
+    const rl = new RateLimiter(600, 10_000);
+    const t0 = performance.now();
+    for (let i = 0; i < 100_000; i++) {
+      rl.hit(`10.${(i >> 16) & 255}.${(i >> 8) & 255}.${i & 255}`, 1_000_000 + i);
+      expect(rl.size).toBeLessThanOrEqual(10_000);
+    }
+    expect(rl.size).toBeGreaterThan(9_000);
+    expect(performance.now() - t0).toBeLessThan(1000);
+  });
+  it("evicts the least recently seen keys, so an active client keeps its count", () => {
+    const rl = new RateLimiter(3, 1000);
+    for (let i = 0; i < 3; i++) rl.hit("active", i);
+    for (let i = 0; i < 5000; i++) { rl.hit(`flood${i}`, 10 + i); if (i % 100 === 0) rl.hit("active", 10 + i); }
+    expect(rl.size).toBeLessThanOrEqual(1000);
+    expect(rl.hit("active", 6000)).toBeGreaterThan(0);
+  });
+  it("sweeps idle keys on a timer, not per request", () => {
+    const rl = new RateLimiter(5, 1000);
+    for (let i = 0; i < 100; i++) rl.hit(`k${i}`, i);
+    rl.hit("k-late", 150_000);
+    rl.sweep(150_000);
+    expect(rl.size).toBe(1);
+  });
+  it("allows the limit per minute, then says how long to wait, and recovers", () => {
+    const rl = new RateLimiter(3);
+    expect([rl.hit("a", 0), rl.hit("a", 1000), rl.hit("a", 2000)]).toEqual([0, 0, 0]);
+    expect(rl.hit("a", 3000)).toBeGreaterThan(0);
+    expect(rl.hit("b", 3000)).toBe(0);
+    expect(rl.hit("a", 125_000)).toBe(0);
+  });
+  it("keys IPv4 by address and IPv6 by /64, and strips ports and zones", () => {
+    expect(rateKey("2001:db8:1:2::1")).toBe(rateKey("2001:0DB8:1:2:ffff:ffff:ffff:9"));
+    expect(rateKey("2001:db8:1:2::1")).toBe("2001:db8:1:2::/64");
+    expect(rateKey("2001:db8:1:3::1")).not.toBe(rateKey("2001:db8:1:2::1"));
+    expect(rateKey("[2001:db8::1]:443")).toBe("2001:db8:0:0::/64");
+    expect(rateKey("fe80::1%eth0")).toBe("fe80:0:0:0::/64");
+    expect(rateKey("::ffff:203.0.113.9")).toBe("203.0.113.9");
+    expect(rateKey("203.0.113.9:5678")).toBe("203.0.113.9");
+    for (const bad of ["unknown", "", "999.1.1.1", "Zebedee"]) expect(rateKey(bad), bad).toBeNull();
+  });
+  it("reads the client from X-Forwarded-For, counting trusted hops from the right", () => {
+    expect(clientKey("6.6.6.6, 203.0.113.9", "10.0.0.1", 1)).toBe("203.0.113.9");
+    expect(clientKey("6.6.6.6, 7.7.7.7, 203.0.113.9, 35.1.1.1", "10.0.0.1", 2)).toBe("203.0.113.9");
+    expect(clientKey("203.0.113.9", "10.0.0.1", 2)).toBe("203.0.113.9");
+    expect(clientKey(" , 203.0.113.9 ,", "10.0.0.1", 1)).toBe("203.0.113.9");
+    expect(clientKey("6.6.6.6, not-an-ip", "10.0.0.1", 1)).toBe("10.0.0.1");
+    expect(clientKey(undefined, undefined, 1)).toBe("unknown");
+  });
+  it("one IPv6 /64 shares one bucket at the HTTP layer", async () => {
+    const small = createApp({ rateLimitPerMin: 2, site: new Map() });
+    const hit = (ip: string) => small.request("/nope", { headers: { "x-forwarded-for": ip } });
+    expect((await hit("2001:db8:5:6::1")).status).toBe(404);
+    expect((await hit("2001:db8:5:6::2")).status).toBe(404);
+    expect((await hit("2001:db8:5:6:abcd::3")).status).toBe(429);
+    expect((await hit("2001:db8:5:7::1")).status).toBe(404);
+  });
+});
+
+describe("access log fields (review finding 6)", () => {
+  it("logs only known MCP methods, tool names and routes", async () => {
+    expect(logRpc("tools/list", undefined)).toEqual({ rpc: "tools/list" });
+    expect(logRpc("tools/call", "pair_attendees")).toEqual({ rpc: "tools/call", tool: "pair_attendees" });
+    expect(logRpc("tools/call", "Zebedee Quarrington")).toEqual({ rpc: "tools/call", tool: "other" });
+    expect(logRpc("tools/call", "toString")).toEqual({ rpc: "tools/call", tool: "other" });
+    expect(logRpc("Zebedee Quarrington's notes", undefined)).toEqual({ rpc: "other" });
+    expect(logRpc(42, undefined)).toEqual({ rpc: "other" });
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((line: string) => { lines.push(String(line)); });
+    const prev = CONFIG.logging;
+    (CONFIG as { logging: boolean }).logging = true;
+    try {
+      const body = (method: string, params: unknown = {}) => JSON.stringify({ jsonrpc: "2.0", id: 1, method, params });
+      const send = (b: string) => app.request("/mcp", { method: "POST", body: b, headers: { "content-type": "application/json", accept: "application/json, text/event-stream" } });
+      await send(body("Zebedee Quarrington/secret-method"));
+      await send(body("tools/call", { name: "Ottoline Vasquez", arguments: {} }));
+      await app.request("/members/zebedee-quarrington@example.com");
+    } finally { (CONFIG as { logging: boolean }).logging = prev; spy.mockRestore(); }
+    const joined = lines.join("\n");
+    expect(joined).toMatch(/"rpc":"other"/);
+    expect(joined).toMatch(/"rpc":"tools\/call","tool":"other"/);
+    expect(joined).toMatch(/"path":"other"/);
+    expect(joined).not.toMatch(/Zebedee|Quarrington|Ottoline|secret|example\.com/i);
   });
 });
 

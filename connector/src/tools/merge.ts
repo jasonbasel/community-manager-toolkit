@@ -8,8 +8,8 @@ import {
   ASKS_PRECEDENCE, DEACTIVATED_VALUES, IDENTITY_PRECEDENCE, OPT_IN_NO, OPT_IN_YES, SOURCE_KINDS, STATUS_VALUES, type SourceKind,
 } from "../data/sources.js";
 import {
-  cmp, daysBetween, displayOrg, emailParts, findSensitive, firstNameRelation, fold, hasSensitive, isEmailLike, isPhoneLike, jaroWinkler,
-  nameKey, orgKey, parseDate, plain, scrubContacts, tidyName, toList, todayIso, type DateOrder, type EmailParts,
+  cmp, daysBetween, displayOrg, emailParts, findSensitive, firstNameRelation, fold, hasSensitive, idContactKind, isEmailLike, isPhoneLike, isUrlLike,
+  isPlaceholderName, jaroWinkler, nameKey, orgKey, parseDate, plain, scrubContacts, tidyName, toList, todayIso, type DateOrder, type EmailParts,
 } from "../text/normalise.js";
 import { InputError } from "./errors.js";
 
@@ -36,8 +36,13 @@ export interface DirectoryMember {
 type Ref = { id: string; name: string; organisation: string; sources: string[] };
 export interface UncertainMatch { a: Ref; b: Ref | null; kind: string; reason: string; score: number }
 
+/** Pairs are compared only within same-name groups and similar-name blocks up to this size; bigger ones are test or placeholder data. */
+export const MAX_COMPARE_GROUP = 300;
+/** Uncertain matches returned, strongest first; stats.uncertain_total always has the full count. */
+export const MAX_UNCERTAIN = 500;
+
 interface Prep {
-  i: number; source: string; kind: SourceKind; name: string; nameKey: string; first: string; last: string; partial: boolean;
+  i: number; source: string; kind: SourceKind; name: string; nameKey: string; placeholder: boolean; first: string; last: string; partial: boolean;
   org: string; orgKey: string; role: string; location: string; email: EmailParts | null; ids: string[]; joined: string | null;
   lastActive: string | null; status: DirectoryMember["status"] | null; deactivated: boolean; optIn: "yes" | "no" | "unknown" | null;
   asks: string[]; offers: string[]; tags: string[]; notes: string; inferred: Set<string>; anchored: boolean;
@@ -86,17 +91,46 @@ function redactSensitive(s: string, counter: { n: number }): string {
 }
 
 const ROLE_ORG_RE = /^(.+?)\s+(?:at|@)\s+(.+)$|^(.+?)\s*[|,]\s*(.+)$/i;
+const indexList = (xs: number[]) => `${xs.slice(0, 10).map((i) => `records[${i}]`).join(", ")}${xs.length > 10 ? ` and ${xs.length - 10} more` : ""}`;
+
+/** Keeps the strongest uncertain matches (score, then names, then ids) in bounded memory; admits() is checked before building one. */
+class TopMatches {
+  private items: { u: UncertainMatch; ak: string; bk: string }[] = [];
+  private worst: { score: number; ak: string; bk: string; aid: string; bid: string } | null = null;
+  constructor(private readonly k: number) {}
+  private static order(x: { score: number; ak: string; bk: string; aid: string; bid: string }, y: typeof x): number {
+    return y.score - x.score || cmp(x.ak, y.ak) || cmp(x.bk, y.bk) || cmp(x.aid, y.aid) || cmp(x.bid, y.bid);
+  }
+  private static flat(e: { u: UncertainMatch; ak: string; bk: string }) { return { score: e.u.score, ak: e.ak, bk: e.bk, aid: e.u.a.id, bid: e.u.b?.id ?? "" }; }
+  admits(score: number, ak: string, bk: string, aid: string, bid: string): boolean {
+    return !this.worst || TopMatches.order({ score, ak, bk, aid, bid }, this.worst) < 0;
+  }
+  add(u: UncertainMatch, ak: string, bk: string): void {
+    this.items.push({ u, ak, bk });
+    if (this.items.length >= 2 * this.k) this.trim();
+  }
+  private trim(): void {
+    this.items.sort((x, y) => TopMatches.order(TopMatches.flat(x), TopMatches.flat(y)));
+    this.items.length = Math.min(this.items.length, this.k);
+    if (this.items.length === this.k) this.worst = TopMatches.flat(this.items[this.k - 1]);
+  }
+  result(): UncertainMatch[] { this.trim(); return this.items.map((e) => e.u); }
+}
 
 export function mergeMemberRecords(input: MergeInput) {
   const today = parseDate(input.today ?? "") ?? todayIso();
   if (input.today && !parseDate(input.today)) throw new InputError(`today '${input.today}' is not a date; use YYYY-MM-DD`);
   const order = input.date_order ?? "DMY";
   const scrubbed = { n: 0 }, redacted = { n: 0 };
-  let badDates = 0, sensitiveTags = 0, nameless = 0;
+  let badDates = 0, sensitiveTags = 0, nameless = 0, unsafeSources = 0;
+  const droppedIds: number[] = [];
 
   // ---- 1. prepare ----
   const recs: Prep[] = input.records.map((r, i) => {
-    const source = sourceLabel(r.source);
+    // A source label that is itself a contact detail would be echoed in source_ids and by_source.
+    const unsafeSource = !!idContactKind(String(r.source ?? ""));
+    if (unsafeSource) unsafeSources++;
+    const source = unsafeSource ? "unknown" : sourceLabel(r.source);
     const kind = sourceKind(source);
     let rawName = (r.name ?? "").trim() || [r.first_name, r.last_name].filter((x) => x && String(x).trim()).join(" ").trim();
     if (rawName && (isEmailLike(rawName) || isPhoneLike(rawName))) rawName = "";
@@ -111,9 +145,21 @@ export function mergeMemberRecords(input: MergeInput) {
     }
     org = scrubText(org, scrubbed); role = scrubText(role, scrubbed);
     const email = emailParts(r.email ?? null);
+    // Source IDs that are really contact details (WhatsApp numbers, email addresses, profile links, handles) are dropped, never echoed.
     const ids: string[] = [];
-    if (r.source_id != null && String(r.source_id).trim()) ids.push(`${source}:${String(r.source_id).trim()}`);
-    for (const x of r.source_ids ?? []) if (x && String(x).trim()) ids.push(String(x).includes(":") ? String(x).trim() : `${source}:${String(x).trim()}`);
+    let dropped = false;
+    const addId = (raw: unknown, prefixed: boolean) => {
+      const s = raw == null ? "" : String(raw).trim();
+      if (!s) return;
+      const colon = prefixed ? s.indexOf(":") : -1;
+      const label = colon > 0 ? s.slice(0, colon) : source, value = colon >= 0 ? s.slice(colon + 1) : s;
+      // The whole entry is checked for emails and links (they contain ":"); the ID part by the ID rules (bare platform numbers are fine).
+      if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { source: label, handles: true }) || (colon > 0 && idContactKind(label))) { dropped = true; return; }
+      ids.push(colon >= 0 ? s : `${source}:${s}`);
+    };
+    addId(r.source_id, false);
+    for (const x of r.source_ids ?? []) addId(x, true);
+    if (dropped) droppedIds.push(i);
     const dateOf = (v: unknown) => { if (v == null || v === "") return null; const d = parseDate(v, order); if (!d) badDates++; return d; };
     const statusRaw = fold(String(r.status ?? "")).trim();
     const deactivated = kind === "chat" && DEACTIVATED_VALUES.includes(statusRaw);
@@ -127,7 +173,7 @@ export function mergeMemberRecords(input: MergeInput) {
     const notes = r.notes ? redactSensitive(scrubText(String(r.notes).replace(/\s+/g, " ").trim(), scrubbed), redacted) : "";
     const last = toks.length > 1 ? toks[toks.length - 1] : "";
     return {
-      i, source, kind, name, nameKey: nk, first: toks[0] ?? "", last, partial: toks.length < 2 || last.length === 1,
+      i, source, kind, name, nameKey: nk, placeholder: isPlaceholderName(nk), first: toks[0] ?? "", last, partial: toks.length < 2 || last.length === 1,
       org, orgKey: orgKey(org), role, location: scrubText((r.location ?? "").trim(), scrubbed), email, ids, joined: dateOf(r.joined),
       lastActive: dateOf(r.last_active), status, deactivated, optIn: optIn(r.opted_in), asks, offers, tags, notes, inferred,
       anchored: kind !== "chat" || !!(email && !email.role) || !!orgKey(org),
@@ -143,7 +189,7 @@ export function mergeMemberRecords(input: MergeInput) {
   for (const r of recs) {
     if (r.email && !r.email.role) link(`e:${r.email.key}`, r.i);
     for (const id of r.ids) link(`i:${id}`, r.i);
-    if (r.nameKey && r.orgKey) link(`n:${r.nameKey}|${r.orgKey}`, r.i);
+    if (r.nameKey && r.orgKey && !r.placeholder) link(`n:${r.nameKey}|${r.orgKey}`, r.i); // "Unknown" at Acme is not one person
   }
 
   const idPrec = (input.precedence?.identity ?? []).map(sourceLabel);
@@ -158,16 +204,17 @@ export function mergeMemberRecords(input: MergeInput) {
 
   const clusters = () => {
     const m = new Map<number, Prep[]>();
-    for (const r of recs) { const k = find(r.i); m.set(k, [...(m.get(k) ?? []), r]); }
+    for (const r of recs) { const k = find(r.i); const rs = m.get(k); if (rs) rs.push(r); else m.set(k, [r]); }
     return [...m.values()];
   };
   const seedOf = (rs: Prep[]) => {
     const s = [...rs].sort(byIdentity);
     const withId = s.find((r) => r.ids.length);
     if (withId) return `id:${[...withId.ids].sort()[0]}`;
-    const named = s.find((r) => r.nameKey && r.orgKey);
+    // Seeds must be keys that also link records: never a placeholder name or a shared mailbox (info@, hello@ …), which match nobody.
+    const named = s.find((r) => r.nameKey && r.orgKey && !r.placeholder);
     if (named) return `n:${named.nameKey}|${named.orgKey}`;
-    const em = s.find((r) => r.email);
+    const em = s.find((r) => r.email && !r.email.role);
     if (em) return `e:${em.email!.key}`;
     return `r:${s[0].source}:${s[0].i}:${s[0].nameKey}`;
   };
@@ -193,30 +240,33 @@ export function mergeMemberRecords(input: MergeInput) {
   const exactMerged: string[] = [];
   if (anchoredExists && input.merge_exact_names) {
     const byName = new Map<string, Prep[][]>();
-    for (const rs of groups) if (!isAccount(rs)) for (const k of new Set(rs.map((r) => r.nameKey).filter(Boolean))) byName.set(k, [...(byName.get(k) ?? []), rs]);
+    const byLast = new Map<string, Prep[]>(); // anchored records by surname, for the similar-name check
+    for (const rs of groups) {
+      if (isAccount(rs)) continue;
+      for (const k of new Set(rs.filter((r) => r.nameKey && !r.placeholder).map((r) => r.nameKey))) { const g = byName.get(k); if (g) g.push(rs); else byName.set(k, [rs]); }
+      for (const r of rs) if (r.last) { const g = byLast.get(r.last); if (g) g.push(r); else byLast.set(r.last, [r]); }
+    }
+    const similarNameExists = (k: string) => {
+      const toks = k.split(" ");
+      const first = toks[0], last = toks[toks.length - 1];
+      return (byLast.get(last) ?? []).some((r) => r.nameKey !== k && !!firstNameRelation(first, r.first));
+    };
     for (const rs of groups) {
       if (!isAccount(rs)) continue;
       const k = rs[0].nameKey;
-      const cands = k && !rs[0].partial ? byName.get(k) ?? [] : [];
-      if (cands.length === 1 && !similarNameExists(k, groups)) { exactMerged.push(rs[0].name); union(rs[0].i, cands[0][0].i); }
+      const cands = k && !rs[0].partial && !rs[0].placeholder ? byName.get(k) ?? [] : [];
+      if (cands.length === 1 && !similarNameExists(k)) { exactMerged.push(rs[0].name); union(rs[0].i, cands[0][0].i); }
     }
     groups = clusters();
-  }
-  function similarNameExists(k: string, gs: Prep[][]): boolean {
-    const toks = k.split(" ");
-    const first = toks[0], last = toks[toks.length - 1];
-    return gs.some((rs) => !isAccount(rs) && rs.some((r) => r.nameKey !== k && r.last === last && !!firstNameRelation(first, r.first)));
   }
 
   const memberGroups = anchoredExists ? groups.filter((rs) => !isAccount(rs)) : groups;
   const accountGroups = anchoredExists ? groups.filter((rs) => isAccount(rs)) : [];
 
   // ---- 4. build members ----
-  const members: DirectoryMember[] = [];
-  const memberRecs = new Map<string, Prep[]>();
+  const built: { m: DirectoryMember; key: string }[] = []; // key: the name normalised once, reused for sorting and matching
   for (const rs of memberGroups) {
     const id = idOf(rs);
-    memberRecs.set(id, rs);
     const ident = [...rs].sort(byIdentity);
     const pick = (f: (r: Prep) => string) => ident.find((r) => !!f(r));
     const nameRec = pick((r) => (r.partial && r.kind === "chat" ? "" : r.name)) ?? pick((r) => r.name);
@@ -233,10 +283,11 @@ export function mergeMemberRecords(input: MergeInput) {
     const emailRec = ident.find((r) => r.email && !r.email.personal);
     const tagsSeen = new Map<string, string>();
     for (const r of ident) for (const t of r.tags) if (!tagsSeen.has(fold(t))) tagsSeen.set(fold(t), t);
-    const notes: string[] = [];
+    const notes: string[] = [], seenNotes = new Set<string>();
     for (const r of ident) {
-      if (r.notes && !notes.includes(`${r.source}: ${r.notes}`)) notes.push(`${r.source}: ${r.notes}`);
-      if (r.deactivated) notes.push(`${r.source}: account deactivated (its activity is not used)`);
+      const note = r.notes ? `${r.source}: ${r.notes}` : "";
+      if (note && !seenNotes.has(note)) { notes.push(note); seenNotes.add(note); }
+      if (r.deactivated) { const d = `${r.source}: account deactivated (its activity is not used)`; notes.push(d); seenNotes.add(d); }
     }
     const conflicts: DirectoryMember["conflicts"] = [];
     const addConflict = (field: string, vals: { key: string; value: string; source: string }[]) => {
@@ -256,89 +307,107 @@ export function mergeMemberRecords(input: MergeInput) {
     const organisation = orgRec ? displayOrg(orgRec.org) : "";
     const role = roleRec?.role ?? "", asks = askRec?.asks ?? [], offers = offerRec?.offers ?? [];
     const filled = [organisation, role, asks.length ? "y" : "", offers.length ? "y" : ""].filter(Boolean).length;
-    members.push({
+    built.push({ key: nameRec?.nameKey ?? "", m: {
       member_id: id, name: nameRec?.name ?? "", organisation, role, location: locRec?.location ?? "",
       email_domain: emailRec?.email?.domain ?? "", source_ids: [...new Set(rs.flatMap((r) => r.ids.length ? r.ids : [r.source]))].sort(cmp),
       status: statusRec?.status ?? "", joined: joinedDates[0] ?? "", last_active: actRecs[0]?.lastActive ?? "", last_active_source: actRecs[0]?.source ?? "",
       asks, offers, tags: [...tagsSeen.values()], opted_in: noRec ? "no" : yesRec ? "yes" : "unknown", opt_in_source: (noRec ?? yesRec)?.source ?? "",
       profile_quality: filled === 4 ? "full" : filled >= 2 ? "partial" : "thin", inferred_fields: [...inferred].sort(cmp), notes: notes.join(" | "),
       conflicts, updated: today,
-    });
+    } });
   }
-  members.sort((a, b) => cmp(nameKey(a.name), nameKey(b.name)) || cmp(a.member_id, b.member_id));
+  built.sort((a, b) => cmp(a.key, b.key) || cmp(a.m.member_id, b.m.member_id));
+  const members = built.map((b) => b.m);
   const ref = (m: DirectoryMember): Ref => ({ id: m.member_id, name: m.name, organisation: m.organisation, sources: [...new Set(m.source_ids.map((s) => s.split(":")[0]))] });
 
   // ---- 5. uncertain matches ----
-  const uncertain: UncertainMatch[] = [];
-  const seenPairs = new Set<string>();
-  const push = (u: UncertainMatch) => {
-    const k = pairKey(u.a.id, u.b?.id ?? `none:${u.a.id}`);
-    if (seenPairs.has(k) || (u.b && different.has(pairKey(u.a.id, u.b.id)))) return;
-    seenPairs.add(k);
-    uncertain.push(u);
+  // Bounded: pairs are compared only inside groups of up to MAX_COMPARE_GROUP, names are normalised once,
+  // and only the strongest MAX_UNCERTAIN are kept (each is built only if it would make the cut).
+  type MI = { m: DirectoryMember; key: string; first: string; last: string; org: string; ref: Ref };
+  const mi: MI[] = built.map(({ m, key }) => {
+    const t = key ? key.split(" ") : [];
+    return { m, key, first: t[0] ?? "", last: t.length > 1 ? t[t.length - 1] : "", org: orgKey(m.organisation), ref: ref(m) };
+  });
+  const named = mi.filter((x) => x.key && !isPlaceholderName(x.key));
+  const top = new TopMatches(MAX_UNCERTAIN);
+  let uncertainTotal = 0;
+  const admit = (score: number, ak: string, a: Ref, bk: string, b: Ref | null) => {
+    if (b && different.has(pairKey(a.id, b.id))) return false;
+    uncertainTotal++;
+    return top.admits(score, ak, bk, a.id, b?.id ?? "");
   };
-  const keyOf = (m: DirectoryMember) => nameKey(m.name);
-  const firstLast = (k: string) => { const t = k.split(" "); return { first: t[0] ?? "", last: t.length > 1 ? t[t.length - 1] : "" }; };
+  const groupBy = (xs: MI[], keysOf: (x: MI) => string[]) => {
+    const g = new Map<string, MI[]>();
+    for (const x of xs) for (const k of keysOf(x)) { const arr = g.get(k); if (arr) arr.push(x); else g.set(k, [x]); }
+    return g;
+  };
   // (a) same name, not merged
-  const byName = new Map<string, DirectoryMember[]>();
-  for (const m of members) if (keyOf(m)) byName.set(keyOf(m), [...(byName.get(keyOf(m)) ?? []), m]);
-  for (const ms of byName.values()) {
-    for (let x = 0; x < ms.length; x++) for (let y = x + 1; y < ms.length; y++) {
-      const a = ms[x], b = ms[y];
-      const both = orgKey(a.organisation) && orgKey(b.organisation);
-      push(both
-        ? { a: ref(a), b: ref(b), kind: "same_name_different_org", score: 1, reason: `Same name at different organisations (${a.organisation} / ${b.organisation}): one person who moved, or two people?` }
-        : { a: ref(a), b: ref(b), kind: "same_name_org_missing", score: 1, reason: "Same name; the organisation is missing on one side, so it can't be confirmed." });
+  const byName = groupBy(named, (x) => [x.key]);
+  let bigNameGroups = 0;
+  for (const xs of byName.values()) {
+    if (xs.length > MAX_COMPARE_GROUP) { bigNameGroups++; continue; }
+    for (let p = 0; p < xs.length; p++) for (let q = p + 1; q < xs.length; q++) {
+      const a = xs[p], b = xs[q];
+      if (!admit(1, a.key, a.ref, b.key, b.ref)) continue;
+      top.add(a.org && b.org
+        ? { a: a.ref, b: b.ref, kind: "same_name_different_org", score: 1, reason: `Same name at different organisations (${a.m.organisation} / ${b.m.organisation}): one person who moved, or two people?` }
+        : { a: a.ref, b: b.ref, kind: "same_name_org_missing", score: 1, reason: "Same name; the organisation is missing on one side, so it can't be confirmed." }, a.key, b.key);
     }
   }
   // (b) similar names (blocked by surname, and by first name + surname initial)
-  const blocks = new Map<string, DirectoryMember[]>();
-  for (const m of members) {
-    const k = keyOf(m); if (!k) continue;
-    const { first, last } = firstLast(k);
-    if (last) { blocks.set(`l:${last}`, [...(blocks.get(`l:${last}`) ?? []), m]); blocks.set(`f:${first}|${last[0]}`, [...(blocks.get(`f:${first}|${last[0]}`) ?? []), m]); }
-  }
+  const blocks = groupBy(named.filter((x) => x.last), (x) => [`l:${x.last}`, `f:${x.first}|${x.last[0]}`]);
+  const surnameChecked = new Set([...blocks].filter(([k, xs]) => k.startsWith("l:") && xs.length <= MAX_COMPARE_GROUP).map(([k]) => k.slice(2)));
   let skippedBlocks = 0;
-  for (const ms of blocks.values()) {
-    if (ms.length > 300) { skippedBlocks++; continue; }
-    for (let x = 0; x < ms.length; x++) for (let y = x + 1; y < ms.length; y++) {
-      const a = ms[x], b = ms[y], ka = keyOf(a), kb = keyOf(b);
-      if (ka === kb) continue;
-      const fa = firstLast(ka), fb = firstLast(kb);
-      const jw = jaroWinkler(ka, kb);
-      const rel = fa.last === fb.last ? firstNameRelation(fa.first, fb.first) : null;
+  for (const [bk, xs] of blocks) {
+    if (xs.length > MAX_COMPARE_GROUP) { skippedBlocks++; continue; }
+    const firstNameBlock = bk.startsWith("f:");
+    for (let p = 0; p < xs.length; p++) for (let q = p + 1; q < xs.length; q++) {
+      const a = xs[p], b = xs[q];
+      if (a.key === b.key) continue;
+      if (firstNameBlock && a.last === b.last && surnameChecked.has(a.last)) continue; // already compared in its surname block
+      const jw = jaroWinkler(a.key, b.key);
+      const rel = a.last === b.last ? firstNameRelation(a.first, b.first) : null;
       if (!rel && jw < 0.9) continue;
-      const sameOrg = orgKey(a.organisation) && orgKey(a.organisation) === orgKey(b.organisation);
-      const where = sameOrg ? `both at ${a.organisation}` : `different organisations (${a.organisation || "none given"} / ${b.organisation || "none given"})`;
-      const why = rel === "variant" || rel === "prefix" ? `'${fa.first.length < fb.first.length ? a.name.split(" ")[0] : b.name.split(" ")[0]}' could be short for '${fa.first.length < fb.first.length ? b.name.split(" ")[0] : a.name.split(" ")[0]}'`
+      const score = Math.round(jw * 100) / 100;
+      if (!admit(score, a.key, a.ref, b.key, b.ref)) continue;
+      const sameOrg = a.org && a.org === b.org;
+      const where = sameOrg ? `both at ${a.m.organisation}` : `different organisations (${a.m.organisation || "none given"} / ${b.m.organisation || "none given"})`;
+      const [short, long] = a.first.length < b.first.length ? [a, b] : [b, a];
+      const why = rel === "variant" || rel === "prefix" ? `'${short.m.name.split(" ")[0]}' could be short for '${long.m.name.split(" ")[0]}'`
         : rel === "initial" ? "one first name is just an initial" : "the names differ by a letter or two";
-      push({ a: ref(a), b: ref(b), kind: "similar_names", score: Math.round(jw * 100) / 100, reason: `Similar names, ${where}: ${why}. Confirm before any introduction.` });
+      top.add({ a: a.ref, b: b.ref, kind: "similar_names", score, reason: `Similar names, ${where}: ${why}. Confirm before any introduction.` }, a.key, b.key);
     }
   }
   // (c) chat accounts that did not resolve to a person
   const accounts: { id: string; name: string; source: string; rs: Prep[] }[] = accountGroups.map((rs) => ({ id: idOf(rs), name: rs[0].name, source: rs[0].source, rs }));
   for (const acc of accounts) {
     const aRef: Ref = { id: acc.id, name: acc.name || "(no name)", organisation: "", sources: [...new Set(acc.rs.map((r) => r.source))] };
-    const k = nameKey(acc.name);
-    const toks = k.split(" ").filter(Boolean);
-    const exact = k ? (byName.get(k) ?? []) : [];
+    const ak = nameKey(aRef.name), k = nameKey(acc.name);
+    const toks = k ? k.split(" ") : [];
     const label = acc.source.charAt(0).toUpperCase() + acc.source.slice(1);
+    const handle = () => { if (admit(0, ak, aRef, "", null)) top.add({ a: aRef, b: null, kind: "chat_handle", score: 0, reason: `${label} name '${acc.name || "(none)"}' does not identify anyone in the other sources; ask the manager who this is (not guessed).` }, ak, ""); };
+    if (isPlaceholderName(k)) { handle(); continue; }
+    const exact = byName.get(k) ?? [];
     if (exact.length === 1 && toks.length > 1 && toks[toks.length - 1].length > 1) {
-      push({ a: aRef, b: ref(exact[0]), kind: "same_name_org_missing", score: 1, reason: `${label} display name matches ${exact[0].name} exactly, but the account has no email or organisation to confirm it.` });
+      if (admit(1, ak, aRef, exact[0].key, exact[0].ref)) top.add({ a: aRef, b: exact[0].ref, kind: "same_name_org_missing", score: 1, reason: `${label} display name matches ${exact[0].m.name} exactly, but the account has no email or organisation to confirm it.` }, ak, exact[0].key);
       continue;
     }
-    let cands: DirectoryMember[] = exact;
+    let cands: MI[] = exact;
     if (!cands.length && toks.length >= 2 && toks[toks.length - 1].length === 1) {
-      cands = members.filter((m) => { const f = firstLast(keyOf(m)); return f.last.startsWith(toks[toks.length - 1]) && (f.first === toks[0] || (toks[0].length >= 2 && f.first.startsWith(toks[0])) || firstNameRelation(toks[0], f.first) === "variant"); });
+      const ini = toks[toks.length - 1], f0 = toks[0];
+      cands = mi.filter((x) => x.last.startsWith(ini) && (x.first === f0 || (f0.length >= 2 && x.first.startsWith(f0)) || firstNameRelation(f0, x.first) === "variant"));
     } else if (!cands.length && toks.length === 1 && toks[0].length >= 2) {
-      const pref = members.filter((m) => firstLast(keyOf(m)).first.startsWith(toks[0]));
+      const pref = mi.filter((x) => x.first.startsWith(toks[0]));
       cands = pref.length >= 2 ? pref : [];
     }
-    if (cands.length === 1) push({ a: aRef, b: ref(cands[0]), kind: "chat_name_partial", score: 0.7, reason: `${label} name '${acc.name}' fits only ${cands[0].name}, but it is not a full name. Confirm before merging.` });
-    else if (cands.length > 1) for (const c of cands.slice(0, 5)) push({ a: aRef, b: ref(c), kind: "chat_name_ambiguous", score: 0.5, reason: `${label} name '${acc.name}' could be ${cands.slice(0, 5).map((x) => x.name).join(" or ")}: ambiguous, not merged.` });
-    else push({ a: aRef, b: null, kind: "chat_handle", score: 0, reason: `${label} name '${acc.name || "(none)"}' does not identify anyone in the other sources; ask the manager who this is (not guessed).` });
+    if (cands.length === 1) {
+      if (admit(0.7, ak, aRef, cands[0].key, cands[0].ref)) top.add({ a: aRef, b: cands[0].ref, kind: "chat_name_partial", score: 0.7, reason: `${label} name '${acc.name}' fits only ${cands[0].m.name}, but it is not a full name. Confirm before merging.` }, ak, cands[0].key);
+    } else if (cands.length > 1) {
+      const five = cands.slice(0, 5);
+      for (const c of five) if (admit(0.5, ak, aRef, c.key, c.ref)) top.add({ a: aRef, b: c.ref, kind: "chat_name_ambiguous", score: 0.5, reason: `${label} name '${acc.name}' could be ${five.map((x) => x.m.name).join(" or ")}: ambiguous, not merged.` }, ak, c.key);
+    } else handle();
   }
-  uncertain.sort((x, y) => y.score - x.score || cmp(nameKey(x.a.name), nameKey(y.a.name)) || cmp(x.b?.name ?? "", y.b?.name ?? ""));
+  const uncertain = top.result();
 
   // ---- 6. stats, coverage, gaps ----
   const by_source: Record<string, number> = {};
@@ -350,9 +419,9 @@ export function mergeMemberRecords(input: MergeInput) {
     offers: has((m) => m.offers.length > 0), last_active: has((m) => !!m.last_active), opted_in: has((m) => m.opted_in !== "unknown"),
   };
   const recordsInMembers = memberGroups.reduce((s, rs) => s + rs.length, 0);
-  const gaps = members
-    .filter((m) => m.opted_in !== "no")
-    .map((m) => {
+  const gaps = mi
+    .filter(({ m }) => m.opted_in !== "no")
+    .map(({ m, key }) => {
       const missing = [!m.asks.length && "asks", !m.offers.length && "offers", !m.organisation && "organisation", !m.role && "role"].filter(Boolean) as string[];
       const since = m.last_active ? daysBetween(m.last_active, today) : null;
       const joinedAgo = m.joined ? daysBetween(m.joined, today) : null;
@@ -364,13 +433,14 @@ export function mergeMemberRecords(input: MergeInput) {
       else why.push("no activity on record");
       if (joinedAgo !== null && joinedAgo >= 0 && joinedAgo <= 30) { importance += 2; why.push(`joined ${joinedAgo} day${joinedAgo === 1 ? "" : "s"} ago`); }
       importance += (missing.includes("asks") ? 1 : 0) + (missing.includes("offers") ? 1 : 0);
-      return { member_id: m.member_id, name: m.name, missing, importance, why: why.join("; ") };
+      return { member_id: m.member_id, name: m.name, missing, importance, why: why.join("; "), key };
     })
     .filter((g) => g.missing.length)
-    .sort((a, b) => b.importance - a.importance || cmp(nameKey(a.name), nameKey(b.name)))
-    .slice(0, 25);
+    .sort((a, b) => b.importance - a.importance || cmp(a.key, b.key))
+    .slice(0, 25)
+    .map(({ key: _k, ...g }) => g);
   const sameOrg = new Map<string, DirectoryMember[]>();
-  for (const m of members) { const k = orgKey(m.organisation); if (k) sameOrg.set(k, [...(sameOrg.get(k) ?? []), m]); }
+  for (const { m, org } of mi) if (org) { const ms = sameOrg.get(org); if (ms) ms.push(m); else sameOrg.set(org, [m]); }
   const same_organisation = [...sameOrg.values()].filter((ms) => ms.length > 1).map((ms) => ({ organisation: ms[0].organisation, member_ids: ms.map((m) => m.member_id) }));
   const describe_org_neutrally = members.filter((m) => findSensitive(m.organisation).length).map((m) => m.member_id);
 
@@ -380,7 +450,13 @@ export function mergeMemberRecords(input: MergeInput) {
   if (sensitiveTags) warnings.push(`${sensitiveTags} tag(s) naming a sensitive attribute were dropped.`);
   if (badDates) warnings.push(`${badDates} date value(s) could not be read and were left blank (use YYYY-MM-DD).`);
   if (nameless) warnings.push(`${nameless} record(s) had no usable name.`);
+  if (droppedIds.length) warnings.push(`Source IDs that looked like contact details (an email address, phone number, link or handle) were dropped from ${indexList(droppedIds)}; contact details are never used as IDs.`);
+  if (unsafeSources) warnings.push(`${unsafeSources} record(s) had a contact detail as their source name; it was replaced with 'unknown'.`);
+  const placeholderNamed = mi.filter((x) => x.key && isPlaceholderName(x.key)).length;
+  if (placeholderNamed) warnings.push(`${placeholderNamed} member(s) have a placeholder name (such as 'Unknown', 'Test' or initials only), so they were not matched by name; fix the names in the source.`);
+  if (bigNameGroups) warnings.push(`${bigNameGroups} name(s) are shared by more than ${MAX_COMPARE_GROUP} members each and were not compared pair by pair (usually test or placeholder data).`);
   if (skippedBlocks) warnings.push(`${skippedBlocks} very large surname group(s) were not checked for similar names.`);
+  if (uncertainTotal > uncertain.length) warnings.push(`${uncertainTotal} uncertain matches were found; the ${uncertain.length} strongest are listed. Answer these (decisions), then merge again to see the rest.`);
   if (accounts.length) warnings.push(`${accounts.length} chat account(s) have no email or organisation and did not match anyone for certain; they are listed in uncertain_matches and not counted as members.`);
   if (describe_org_neutrally.length) warnings.push(`${describe_org_neutrally.length} organisation name(s) signal a sensitive attribute: describe them by sector only, and never infer anything about the person.`);
   const optedOut = members.filter((m) => m.opted_in === "no").length;
@@ -391,7 +467,7 @@ export function mergeMemberRecords(input: MergeInput) {
     uncertain_matches: uncertain,
     stats: {
       input_records: recs.length, unique_members: n, merged: recordsInMembers - n, unresolved_accounts: accounts.length,
-      merged_by_exact_name: exactMerged.length, by_source, coverage,
+      merged_by_exact_name: exactMerged.length, uncertain_total: uncertainTotal, uncertain_listed: uncertain.length, by_source, coverage,
     },
     gaps,
     same_organisation,

@@ -1,6 +1,6 @@
 /** merge_member_records unit tests (DESIGN §4.2 rules). */
 import { describe, expect, it } from "vitest";
-import { mergeMemberRecords, type MergeRecord } from "../src/tools/merge.js";
+import { MAX_UNCERTAIN, mergeMemberRecords, type MergeRecord } from "../src/tools/merge.js";
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
 const m = (records: MergeRecord[], extra: Record<string, unknown> = {}) => mergeMemberRecords({ records, today: "2026-10-02", ...extra });
@@ -162,5 +162,87 @@ describe("output", () => {
   });
   it("rejects a bad today", () => {
     expect(() => m([{ source: "x", name: "A" }], { today: "yesterday" })).toThrow(/today/);
+  });
+});
+
+describe("bounded uncertain matches (review finding 1)", () => {
+  it("5,000 identical names finish in under 1 s, with nothing generated pair by pair and a warning", () => {
+    const t0 = performance.now();
+    const o = m(Array.from({ length: 5000 }, (_v, i) => ({ source: "hubspot", name: "Sam Patel", organisation: i % 2 ? `Org ${i}` : null })));
+    expect(performance.now() - t0).toBeLessThan(1000);
+    expect(o.stats.unique_members).toBe(5000);
+    expect(o.uncertain_matches.length).toBeLessThanOrEqual(MAX_UNCERTAIN);
+    expect(o.warnings.join(" ")).toMatch(/shared by more than 300 members/);
+  });
+  it("caps the list at 500, strongest first, and reports the total", () => {
+    const t0 = performance.now();
+    const o = m(Array.from({ length: 5000 }, (_v, i) => ({ source: "hubspot", name: `Sam${i % 20} Patel${i % 20}` })));
+    expect(performance.now() - t0).toBeLessThan(1000);
+    expect(o.uncertain_matches).toHaveLength(MAX_UNCERTAIN);
+    expect(o.stats).toMatchObject({ uncertain_total: 20 * ((250 * 249) / 2), uncertain_listed: MAX_UNCERTAIN });
+    expect(o.warnings.join(" ")).toMatch(/622500 uncertain matches were found; the 500 strongest are listed/);
+    const scores = o.uncertain_matches.map((u) => u.score);
+    expect([...scores].sort((a, b) => b - a)).toEqual(scores);
+  });
+  it("placeholder names never generate matches or merges", () => {
+    const o = m([
+      { source: "hubspot", name: "Unknown", organisation: "Acme" }, { source: "form", name: "unknown", organisation: "Acme Ltd" }, { source: "hubspot", name: "N/A" },
+      { source: "hubspot", name: "n/a" }, { source: "hubspot", name: "Test", organisation: "Globex" }, { source: "hubspot", name: "Test User" }, { source: "hubspot", name: "X" },
+      { source: "hubspot", name: "A B" }, { source: "hubspot", name: "A B", organisation: "Initech" }, { source: "hubspot", name: "Sam Patel", organisation: "Ledgerline" },
+      { source: "discord", source_id: "1", name: "Unknown" },
+    ]);
+    expect(o.stats.unique_members).toBe(10); // the two "Unknown"s at Acme are not one person
+    expect(new Set(o.members.map((x) => x.member_id)).size).toBe(10);
+    expect(o.uncertain_matches.filter((u) => u.b)).toEqual([]);
+    expect(o.uncertain_matches).toEqual([expect.objectContaining({ kind: "chat_handle", b: null })]);
+    expect(o.warnings.join(" ")).toMatch(/9 member\(s\) have a placeholder name/);
+  });
+  it("matches chat names against members normalised once (2,500 accounts x 2,500 members in under 1 s)", () => {
+    const t0 = performance.now();
+    const o = m([
+      ...Array.from({ length: 2500 }, (_v, i) => ({ source: "hubspot", name: `Firstname${i} Lastname${i}`, organisation: `Org${i}` })),
+      ...Array.from({ length: 2500 }, (_v, i) => ({ source: "discord", source_id: String(100000 + i), name: i % 2 ? "First L." : "Fi" })),
+    ]);
+    expect(performance.now() - t0).toBeLessThan(1000);
+    expect(o.uncertain_matches).toHaveLength(MAX_UNCERTAIN);
+  });
+});
+
+describe("source IDs that are contact details (review finding 2)", () => {
+  const recs: MergeRecord[] = [
+    { source: "whatsapp", name: "Ann Lee", source_ids: ["whatsapp:+447700900123"] },
+    { source: "mailchimp", name: "Bo Chan", source_ids: ["mailchimp:bo.chan@example.com"] },
+    { source: "linkedin", name: "Cleo Dunn", source_ids: ["https://www.linkedin.com/in/cleo-dunn-1234"] },
+    { source: "linkedin", name: "Dara Eze", source_id: "linkedin.com/in/dara-eze" },
+    { source: "whatsapp", name: "Eli Fox", source_id: "447700900456" },
+    { source: "telegram", name: "Fen Gill", source_ids: ["telegram:@fengill"] },
+    { source: "hubspot", name: "Gus Hart", source_id: "+44 7700 900789" },
+    { source: "hubspot", name: "Hana Ito", source_id: "hana@example.com" },
+    { source: "hubspot", name: "Ivo Jay", source_id: "415-555-0100" },
+    { source: "+44 7700 900999", name: "Juno Kay", source_id: "77" },
+    { source: "hubspot", name: "Kit Lam", source_id: "4155550100", source_ids: ["slack:U0ABC123", "discord:113693792436467651"] },
+  ];
+  it("drops each shape, never echoes it, and names the record index only", () => {
+    const o = m(recs);
+    const s = JSON.stringify(o);
+    for (const bad of ["7700", "example.com", "linkedin.com", "cleo-dunn", "dara-eze", "fengill", "555-0100", "447700"]) expect(s, bad).not.toContain(bad);
+    const w = o.warnings.find((x) => x.startsWith("Source IDs that looked like contact details"))!;
+    expect(w).toMatch(/records\[0\], records\[1\], records\[2\], records\[3\], records\[4\], records\[5\], records\[6\], records\[7\], records\[8\]/);
+    expect(w).not.toMatch(/records\[9\]|records\[10\]/);
+    expect(o.warnings.join(" ")).toMatch(/1 record\(s\) had a contact detail as their source name/);
+    expect(one(o, "Juno Kay").source_ids).toEqual(["unknown:77"]);
+  });
+  it("keeps real platform IDs, including bare numbers from non-phone sources", () => {
+    expect(one(m(recs), "Kit Lam").source_ids).toEqual(["discord:113693792436467651", "hubspot:4155550100", "slack:U0ABC123"]);
+  });
+});
+
+describe("member_id seeds (review finding 11)", () => {
+  it("two people on a shared mailbox get different member_ids", () => {
+    for (const box of ["info", "hello", "admin", "team", "contact", "office", "enquiries", "support"]) {
+      const o = m([{ source: "hubspot", name: "Ann Lee", email: `${box}@acme.com` }, { source: "hubspot", name: "Bob Ray", email: `${box}@acme.com` }]);
+      expect(o.stats.unique_members, box).toBe(2);
+      expect(o.members[0].member_id, box).not.toBe(o.members[1].member_id);
+    }
   });
 });

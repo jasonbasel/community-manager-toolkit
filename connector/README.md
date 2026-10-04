@@ -32,7 +32,7 @@ holds them; otherwise they use system fonts. Font files are never committed.
 
 ```bash
 npm test           # unit tests per tool + golden tests over ../evals/fixtures
-npm run smoke      # starts the built server and drives it with an MCP client over HTTP
+npm run smoke      # starts the built server on a free port (or PORT, if set and free) and drives it with an MCP client
 ```
 
 ## Privacy posture
@@ -42,5 +42,6 @@ npm run smoke      # starts the built server and drives it with an MCP client ov
 - Emails are used only to match records and are never returned. Free text is scrubbed of email
   addresses and phone numbers, and sensitive-attribute words never become tags or match reasons.
 - Logs record only the route or tool name, latency, record counts and status: never inputs or IP addresses.
-- Requests are limited to 2 MB, list sizes are capped, and there is an in-memory rate limit of 60
-  requests per minute per IP.
+  Unknown paths, MCP methods and tool names are logged as "other".
+- Requests are limited to 2 MB, list sizes are capped, and there is an in-memory rate limit of 600
+  requests per minute per client (an IPv4 address or an IPv6 /64), tracking at most 10,000 clients.

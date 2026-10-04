@@ -1,5 +1,6 @@
 /** Text normalisation shared by every tool. Pure functions; no I/O. */
 import { DISPLAY_SUFFIXES, MATCH_PREFIXES, MATCH_SUFFIXES } from "../data/organisations.js";
+import { BARE_COUNTRY_CODES, PHONE_ID_SOURCES, PLACEHOLDER_NAMES, PLACEHOLDER_TOKENS } from "../data/contacts.js";
 import { DOMAIN_ALIASES, DOTLESS_DOMAINS, PERSONAL_EMAIL_DOMAINS, ROLE_LOCAL_PARTS } from "../data/email-domains.js";
 import { SENSITIVE_TERMS } from "../data/sensitive-terms.js";
 import { NICKNAME_GROUPS } from "../data/people.js";
@@ -58,9 +59,45 @@ export function displayOrg(s: string | null | undefined): string {
   return t;
 }
 
-export const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
-const EMAIL_FULL = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-export const isEmailLike = (s: string): boolean => EMAIL_FULL.test(s.trim()) || /\S@\S+\.\S/.test(s);
+// Emails are found by a scan outwards from each "@" rather than by the regex
+// /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, which backtracks quadratically on long unbroken runs.
+const LOCAL = new Uint8Array(128), DOMAIN = new Uint8Array(128), ALPHA = new Uint8Array(128);
+for (let c = 0; c < 128; c++) {
+  const ch = String.fromCharCode(c), alnum = /[A-Za-z0-9]/.test(ch);
+  ALPHA[c] = /[A-Za-z]/.test(ch) ? 1 : 0;
+  DOMAIN[c] = alnum || ch === "." || ch === "-" ? 1 : 0;
+  LOCAL[c] = alnum || "._%+-".includes(ch) ? 1 : 0;
+}
+const inSet = (set: Uint8Array, c: number) => c < 128 && set[c] === 1;
+
+/** Email addresses in free text, left to right: the same matches as the regex above, in linear time. */
+export function findEmails(text: string): { start: number; end: number }[] {
+  const out: { start: number; end: number }[] = [];
+  let floor = 0; // a match never starts inside the previous one
+  for (let at = text.indexOf("@"); at !== -1;) {
+    let start = at, end = -1;
+    while (start > floor && inSet(LOCAL, text.charCodeAt(start - 1))) start--;
+    if (start < at) {
+      let e = at + 1;
+      while (e < text.length && inSet(DOMAIN, text.charCodeAt(e))) e++;
+      // The last "." (after at least one domain character) followed by two letters, then every letter after it.
+      for (let k = e - 1; k >= at + 2; k--) {
+        if (text.charCodeAt(k) === 46 && inSet(ALPHA, text.charCodeAt(k + 1)) && inSet(ALPHA, text.charCodeAt(k + 2))) {
+          end = k + 1;
+          while (end < text.length && inSet(ALPHA, text.charCodeAt(end))) end++;
+          break;
+        }
+      }
+    }
+    if (end > 0) { out.push({ start, end }); floor = end; at = text.indexOf("@", end); }
+    else at = text.indexOf("@", at + 1);
+  }
+  return out;
+}
+
+/** Something shaped like an email address (\S@\S+\.\S within one word), in linear time. */
+export const isEmailLike = (s: string): boolean =>
+  s.split(/\s+/).some((w) => { const at = w.indexOf("@", 1); return at > 0 && w.slice(at + 2, -1).includes("."); });
 
 export interface EmailParts { key: string; domain: string; local: string; personal: boolean; role: boolean }
 const personalDomains = new Set(PERSONAL_EMAIL_DOMAINS);
@@ -78,23 +115,46 @@ export function emailParts(s: string | null | undefined): EmailParts | null {
   return { key: `${local}@${domain}`, domain, local, personal: personalDomains.has(domain), role: roleLocals.has(local) };
 }
 
-// Phone numbers: international (+code), UK-style national (leading 0, incl. "(020)") and US-style 3-3-4.
-const PHONE_RES = [
-  /(?<![\w.+/])\+\d{1,3}[\s.-]?(?:\(\d{1,5}\)[\s.-]?)?\d{1,5}(?:[\s.-]?\d{2,5}){1,4}(?![\w/])/g,
-  /(?<![\w.+/])(?:\(0\d{1,4}\)|0\d{2,4})[\s.-]?\d{3,4}[\s.-]?\d{3,4}(?![\w/])/g,
-  /(?<![\w.+/])\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?![\w/])/g,
-  /(?<![\w.+/])0\d{9,10}(?![\w/])/g,
+// Phone numbers. Every pattern either moves one digit per step or uses short bounded groups, so
+// matching stays linear on long digit runs. Each match must also have a phone's digit count.
+const digitCount = (s: string) => { let n = 0; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); if (c >= 48 && c <= 57) n++; } return n; };
+const bareCountryCode = (m: string) => BARE_COUNTRY_CODES.some(([cc, min, max]) => m.startsWith(cc) && m[cc.length] !== "0" && m.length - cc.length >= min && m.length - cc.length <= max);
+/** Grouped digits that read as a phone: not thousands grouping (1 000 000 000) and not a list of small numbers (12 14 16 18 20 22). */
+const phoneGrouping = (m: string) => { const g = m.split(/[ .-]/).slice(1); return !g.every((x) => x.length === 3) && g.some((x) => x.length >= 3); };
+const PHONE_PATTERNS: readonly { re: RegExp; min: number; max: number; ok?: (m: string) => boolean }[] = [
+  // +44 7700 900311, +1 (415) 555-0100, +44 (0)20 7946 0123
+  { re: /(?<![\w.+/])\+\d(?:[\s.-]?(?:\(\d{1,5}\)|\d)){6,18}(?![\w/])/g, min: 9, max: 15 },
+  // UK-style national: 07700 900311, (020) 7946 0123 (a trunk 0 is never followed by another 0)
+  { re: /(?<![\w.+/])(?:\(0[1-9]\d{0,3}\)|0[1-9]\d{1,3})[\s.-]?\d{3,4}[\s.-]?\d{3,4}(?![\w/])/g, min: 9, max: 15 },
+  // US-style 3-3-4 with separators: 415-555-0100, (415) 555 0100
+  { re: /(?<![\w.+/])\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}(?![\w/])/g, min: 10, max: 10 },
+  // bare national with a trunk 0: 07700900311
+  { re: /(?<![\w.+/])0[1-9]\d{8,9}(?![\w/])/g, min: 10, max: 11 },
+  // international prefix 00: 0044 7700 900311
+  { re: /(?<![\w.+/])00[1-9](?:[\s.-]?\d){7,13}(?![\w/])/g, min: 11, max: 15 },
+  // international without "+", one kind of separator throughout: 44 7700 900311, 1-415-555-0100
+  { re: /(?<![\w.+/-])[1-9]\d{0,2}([ .-])\d{1,6}(?:\1\d{1,6}){1,5}(?![\w/-])/g, min: 11, max: 15, ok: phoneGrouping },
+  // US/Canada without separators: 4155550100, 14155550100 (area code and exchange never start with 0 or 1)
+  { re: /(?<![\w.+/-])1?[2-9]\d{2}[2-9]\d{6}(?![\w/-])/g, min: 10, max: 11 },
+  // bare international with a known country code: 447700900311
+  { re: /(?<![\w.+/-])\d{11,15}(?![\w/-])/g, min: 11, max: 15, ok: bareCountryCode },
 ];
-const digitCount = (s: string) => (s.match(/\d/g) ?? []).length;
+/** WhatsApp click-to-chat links carry a phone number (wa.me/447700900311, api.whatsapp.com/send?phone=…). */
+const WHATSAPP_LINKS: readonly RegExp[] = [
+  /(?<![\w.-])(?:https?:\/\/)?(?:www\.)?wa\.me\/[^\s<>"'()[\]{}]*/gi,
+  /(?<![\w.-])(?:https?:\/\/)?(?:www\.|api\.|web\.)?whatsapp\.com\/send\/?\?[^\s<>"'()[\]{}]*/gi,
+];
+export const isWhatsAppLink = (s: string): boolean => WHATSAPP_LINKS.some((re) => s.search(re) >= 0);
 
-/** Find phone numbers (9–15 digits) in free text. */
+/** Find phone numbers (by shape and digit count) and WhatsApp contact links in free text. */
 export function findPhones(text: string): string[] {
   const out: string[] = [];
-  for (const re of PHONE_RES) {
-    re.lastIndex = 0;
-    for (const m of text.matchAll(re)) {
+  for (const re of WHATSAPP_LINKS) { re.lastIndex = 0; for (const m of text.matchAll(re)) out.push(m[0]); }
+  for (const p of PHONE_PATTERNS) {
+    p.re.lastIndex = 0;
+    for (const m of text.matchAll(p.re)) {
       const n = digitCount(m[0]);
-      if (n >= 9 && n <= 15) out.push(m[0]);
+      if (n >= p.min && n <= p.max && (!p.ok || p.ok(m[0]))) out.push(m[0]);
     }
   }
   return out;
@@ -104,10 +164,53 @@ export const isPhoneLike = (s: string): boolean => {
   return findPhones(t).some((p) => digitCount(p) >= digitCount(t) - 1);
 };
 
-/** Remove email addresses and phone numbers from free text. */
+/** A web address: a scheme, "www.", host/path, or a profile or chat link. */
+export function isUrlLike(s: string): boolean {
+  const t = s.trim().toLowerCase();
+  return t.includes("://") || t.startsWith("www.") || /^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}(?::\d+)?\//.test(t)
+    || /(?:^|[^\w.-])(?:wa\.me|t\.me|lnkd\.in|(?:[\w-]+\.)?linkedin\.com)\//.test(t);
+}
+
+export type ContactKind = "email" | "phone" | "link" | "handle";
+const phoneSources = new Set(PHONE_ID_SOURCES);
+const isPhoneSource = (source: string | undefined) => !!source && fold(source).split(/[^a-z0-9]+/).some((w) => phoneSources.has(w));
+
+/**
+ * Whether an identifier (source ID, guest ID, member ID) is really a contact detail. Stricter than
+ * free-text scanning about bare numbers, which are usually platform IDs (HubSpot, Discord), unless
+ * the source identifies people by phone number (WhatsApp, SMS …) or the number has a trunk 0.
+ */
+export function idContactKind(value: string, opts: { source?: string; handles?: boolean } = {}): ContactKind | null {
+  const v = value.trim();
+  if (!v) return null;
+  if (isEmailLike(v)) return "email";
+  if (isUrlLike(v)) return "link";
+  if (opts.handles && /^@[\w.]/.test(v)) return "handle";
+  const digits = digitCount(v);
+  const phoneChars = /^[+\d\s().-]+$/.test(v);
+  if (phoneChars && digits >= 7 && digits <= 15 && isPhoneSource(opts.source)) return "phone";
+  if (/^\d+$/.test(v)) return /^0[1-9]/.test(v) && digits >= 9 && digits <= 15 ? "phone" : null;
+  if (phoneChars && /^(?:\+|\(|0[1-9])/.test(v) && digits >= 9 && digits <= 15) return "phone";
+  return isPhoneLike(v) ? "phone" : null;
+}
+
+const placeholderNames = new Set(PLACEHOLDER_NAMES), placeholderTokens = new Set(PLACEHOLDER_TOKENS);
+/** A name key that identifies nobody: empty, "unknown", "n/a", "test", single letters or initials only, numbers. */
+export function isPlaceholderName(key: string): boolean {
+  if (!key) return true;
+  if (placeholderNames.has(key)) return true;
+  return key.split(" ").every((t) => t.length === 1 || /^\d+$/.test(t) || placeholderTokens.has(t));
+}
+
+/** Remove email addresses, phone numbers and WhatsApp links from free text. */
 export function scrubContacts(text: string): { text: string; removed: number } {
-  let removed = 0;
-  let t = text.replace(EMAIL_RE, () => { removed++; return "[email removed]"; });
+  const emails = findEmails(text);
+  let removed = emails.length, t = text;
+  if (emails.length) {
+    let out = "", last = 0;
+    for (const e of emails) { out += text.slice(last, e.start) + "[email removed]"; last = e.end; }
+    t = out + text.slice(last);
+  }
   for (const p of [...new Set(findPhones(t))].sort((a, b) => b.length - a.length)) {
     const parts = t.split(p);
     removed += parts.length - 1;
@@ -226,20 +329,24 @@ export function firstNameRelation(a: string, b: string): "same" | "variant" | "p
 const sensitiveIndex: { category: string; term: string; toks: string[] }[] = Object.entries(SENSITIVE_TERMS)
   .flatMap(([category, terms]) => terms.map((term) => ({ category, term, toks: plain(term).split(" ").filter(Boolean) })));
 
-/** Sensitive-attribute terms found in the text (whole words/phrases). */
+const sensitiveByFirst = new Map<string, number[]>();
+sensitiveIndex.forEach((s, k) => { const f = s.toks[0]; if (!f) return; const ks = sensitiveByFirst.get(f); if (ks) ks.push(k); else sensitiveByFirst.set(f, [k]); });
+
+/** Sensitive-attribute terms found in the text (whole words/phrases), in the data's order. One pass over the words. */
 export function findSensitive(text: string | null | undefined): { category: string; term: string }[] {
   if (!text) return [];
   const toks = plain(text).split(" ").filter(Boolean);
-  if (!toks.length) return [];
-  const out: { category: string; term: string }[] = [];
-  for (const s of sensitiveIndex) {
-    for (let i = 0; i + s.toks.length <= toks.length; i++) {
+  const hit = new Set<number>();
+  for (let i = 0; i < toks.length; i++) {
+    for (const k of sensitiveByFirst.get(toks[i]) ?? []) {
+      const st = sensitiveIndex[k].toks;
+      if (hit.has(k) || i + st.length > toks.length) continue;
       let ok = true;
-      for (let j = 0; j < s.toks.length; j++) if (toks[i + j] !== s.toks[j]) { ok = false; break; }
-      if (ok) { out.push({ category: s.category, term: s.term }); break; }
+      for (let j = 1; j < st.length; j++) if (toks[i + j] !== st[j]) { ok = false; break; }
+      if (ok) hit.add(k);
     }
   }
-  return out;
+  return [...hit].sort((a, b) => a - b).map((k) => ({ category: sensitiveIndex[k].category, term: sensitiveIndex[k].term }));
 }
 export const hasSensitive = (text: string | null | undefined): boolean => findSensitive(text).length > 0;
 

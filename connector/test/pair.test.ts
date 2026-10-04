@@ -116,6 +116,17 @@ describe("validation", () => {
     expect(() => pairAttendees({ guests: [g("07700 900100", "a")] })).toThrow(/phone number/);
     expect(() => pairAttendees({ guests: [{ id: " " } as Guest] })).toThrow(/guests\[0\]\.id is missing/);
   });
+  it("trims exclude_ids and avoid_pairs ids like guest ids (review finding 4)", () => {
+    const input: PairInput = {
+      guests: [g("A", "a", ["hiring"], ["funding"]), g("B", "b", ["funding"], ["hiring"]), g("C", "c"), g("D", "d"), g(" E ", "e")],
+      avoid_pairs: [["A ", " B"]], exclude_ids: ["E ", " "],
+    };
+    const out = pairAttendees(input);
+    expect(out.excluded).toMatchObject({ avoid: [["A", "B"]], removed: ["E"] });
+    expect(out.groups.flatMap((x) => x.ids)).not.toContain("E");
+    expect(out.groups.some((x) => x.ids.includes("A") && x.ids.includes("B"))).toBe(false);
+    expect(out.warnings).toEqual([]);
+  });
   it("warns about avoid pairs that name unknown guests", () => {
     expect(pairAttendees({ guests: [g("A", "a"), g("B", "b")], avoid_pairs: [["A", "Z"]] }).warnings[0]).toMatch(/avoid_pairs\[0\]/);
   });

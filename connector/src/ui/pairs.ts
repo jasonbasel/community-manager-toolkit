@@ -1,5 +1,6 @@
 /* Pairs approval table for pair_attendees. Edits stay in this view; Approve posts one message. */
-import { connect, copyText, csvCell, esc, resultText, sendToChat, type ToolResultParams } from "./shared.js";
+import { connect, copyText, esc, resultText, sendToChat, type ToolResultParams } from "./shared.js";
+import { approvalMessage, csvCell } from "./text.js";
 
 type Basis = { ask_offer: { asker: string; offerer: string; keywords: string[] }[]; shared_tags: string[]; complementary: string | null };
 type Group = { group: number; ids: string[]; score: number; strength: "strong" | "medium" | "weak"; basis: Basis; reason_hint: string };
@@ -20,7 +21,6 @@ let swapError = "";
 let sent = false;
 
 const name = (id: string) => data?.guests[id]?.name ?? id;
-const label = (id: string) => (name(id) === id ? id : `${name(id)} [${id}]`);
 const orgKey = (id: string) => data?.guests[id]?.org_key ?? "";
 const avoid = () => new Set((data?.excluded?.avoid ?? []).map(([a, b]) => (a < b ? `${a}|${b}` : `${b}|${a}`)));
 const cap = () => data?.options?.max_per_person ?? 3;
@@ -135,16 +135,11 @@ function bind(): void {
 function approvalText(): string {
   const kept = rows.filter((r) => !r.removed);
   const c = counts();
-  const ev = data?.event?.name ? ` for ${data.event.name}${data.event.starts_at ? ` (${data.event.starts_at.slice(0, 10)})` : ""}` : "";
-  const lines = [`Approved pairs${ev}: ${kept.length} group${kept.length === 1 ? "" : "s"}, ${c.people} people.`];
-  kept.forEach((r, i) => lines.push(`${i + 1}. ${r.ids.map(label).join(" + ")}${r.edited ? " (edited by me)" : ""}`));
-  const backs = kept.flatMap((r) => r.ids).map((id) => [id, data!.backups[id]] as const).filter(([, b]) => !!b);
-  if (backs.length) lines.push(`Backups: ${backs.map(([a, b]) => `${name(a)} → ${name(b!)}`).join("; ")}.`);
-  if (c.notPlaced.length) lines.push(`Not placed (host places at the door): ${c.notPlaced.map(name).join(", ")}.`);
-  const removed = rows.filter((r) => r.removed);
-  if (removed.length) lines.push(`Removed by me: ${removed.map((r) => r.ids.map(name).join(" + ")).join("; ")}.`);
-  lines.push("Please draft the messages for the approved groups.");
-  return lines.join("\n");
+  return approvalMessage({
+    event: data?.event, kept: kept.map((r) => ({ ids: r.ids, edited: r.edited })), removed: rows.filter((r) => r.removed).map((r) => ({ ids: r.ids })),
+    people: c.people, notPlaced: c.notPlaced, name,
+    backups: kept.flatMap((r) => r.ids).flatMap((id) => { const b = data!.backups[id]; return b ? [[id, b] as const] : []; }),
+  });
 }
 
 function csv(): string {

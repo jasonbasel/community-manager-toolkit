@@ -22,7 +22,7 @@ gcloud iam service-accounts create toolkit-run --display-name="Community Manager
 npm ci
 npm run fonts:stage   # copies the CommonOS fonts into ./brand-fonts (gitignored); skip it to use system fonts
 npm run build         # copies ../docs into ./site, compiles, bundles the three views
-npm test && npm run smoke
+npm test && npm run smoke   # smoke picks a free port; PORT=8799 npm run smoke to choose one (it must be free)
 ```
 
 What the upload contains is decided by `.gcloudignore` (tracked), not `.gitignore`:
@@ -61,6 +61,7 @@ command prints the service URL (`https://community-manager-toolkit-…-nw.a.run.
 | `PORT` | 8787 locally; Cloud Run sets 8080 | Listening port |
 | `PUBLIC_MCP_URL` | `https://toolkit.commonos.ai/mcp` | Must equal the URL people add in Claude. Claude derives the views' sandbox domain from it; if they differ, the views won't render in Claude (the tools still work). While testing on the `run.app` URL, set it to that URL's `/mcp`. |
 | `RATE_LIMIT_PER_MIN` | 600 | Requests per client IP per minute, in memory, per instance. Claude and ChatGPT call from shared IPs, so keep it high; cost is capped by max instances. |
+| `RATE_LIMIT_MAX_KEYS` | 10000 | Most clients the rate limiter tracks at once, per instance (least recently seen dropped first). Bounds memory. |
 | `TRUSTED_PROXY_HOPS` | 1 | Proxies that append to `X-Forwarded-For`: 1 for Cloud Run directly, 2 behind Firebase Hosting |
 | `CMT_LOG` | on | `off` silences the app's own logs |
 | `SITE_DIR` | `./site` | Override the pages folder |
@@ -138,6 +139,7 @@ Firebase console, go to Hosting → Add custom domain → `toolkit.commonos.ai`.
 lists).
 
 Afterwards, run `gcloud run services update community-manager-toolkit --region europe-west2 --update-env-vars TRUSTED_PROXY_HOPS=2`.
+The `run.app` URL keeps working alongside the custom domain (see "What the rate limit can and can't do" below).
 
 Notes for this option:
 - Firebase Hosting allows 60 seconds per request, which is plenty: tools answer in milliseconds, and `/mcp`
@@ -153,9 +155,18 @@ After either option: `npm run smoke -- https://toolkit.commonos.ai`, and keep `P
   inputs, outputs or IP addresses. Cloud Run's own request logs in Cloud Logging do record IP address,
   user agent and URL (default retention 30 days). The privacy policy must say so, or you can add a
   log exclusion for `run.googleapis.com/requests`.
-- **Rate limit.** 600 requests per minute per IP, in memory, per instance (up to 2 instances). Claude
-  and ChatGPT call connectors from their own servers, so many users can share an IP. If users see
-  "Rate limit exceeded", raise `RATE_LIMIT_PER_MIN` with the update command above.
+- **Rate limit.** 600 requests per minute per client, in memory, per instance (up to 2 instances). A
+  client is an IPv4 address or an IPv6 /64 (one subscriber usually holds a whole /64). Claude and
+  ChatGPT call connectors from their own servers, so many users can share an IP. If users see
+  "Rate limit exceeded", raise `RATE_LIMIT_PER_MIN` with the update command above. The limiter keeps
+  at most `RATE_LIMIT_MAX_KEYS` clients and sweeps idle ones once a minute, so memory stays bounded.
+- **What the rate limit can and can't do.** The client is read from `X-Forwarded-For`, counting
+  `TRUSTED_PROXY_HOPS` entries from the right; anything further left was sent by the client and is
+  ignored. With Firebase Hosting in front (`TRUSTED_PROXY_HOPS=2`), the `run.app` URL stays
+  reachable directly, and a caller there can add a fake `X-Forwarded-For` entry. That only lets them
+  choose which bucket they are counted in (they can spread requests across made-up keys); it never
+  exposes data or bypasses anything else. Treat the limit as defence in depth: what caps compute and
+  cost is `--max-instances 2` (plus `--concurrency` and the 2 MB body limit).
 - **Rollback:** `gcloud run revisions list --service community-manager-toolkit --region europe-west2`, then
   `gcloud run services update-traffic community-manager-toolkit --region europe-west2 --to-revisions=REVISION=100`.
 - **Updating the pages:** edit `../docs`, then `npm run build` and redeploy (the image carries its own copy).

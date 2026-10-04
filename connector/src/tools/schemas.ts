@@ -76,17 +76,19 @@ const planLedgerRow = z.object({
   intro_id: opt(120), created: opt(40), source: opt(40), event: opt(200), requester: z.string().min(1).max(200), target: z.string().min(1).max(200),
   status: opt(40), asked_on: opt(40), answered_on: opt(40), connected_on: opt(40), outcome: opt(40), next_check: opt(40), notes: opt(2000),
 });
+const optedIn = z.union([z.boolean(), s(60)]).nullish().describe("Explicit consent value; 'no' (or false, unsubscribed …) keeps the person out of every item");
 export const planShape = {
   today: date("Today's date"),
   ledger: z.array(planLedgerRow).max(5000).optional(),
   events: z.array(z.object({
     name: z.string().min(1).max(200), starts_at: z.string().max(40), matched: z.boolean().nullish().describe("Attendees already paired"),
     invitations_sent: z.boolean().nullish().describe("False for invite-only events whose invitations have not gone out"),
-    people: z.array(s(200)).max(500).nullish().describe("Invitees who would receive an invitation (names or ids)"),
+    people: z.array(z.union([s(200), z.object({ id: opt(200), name: opt(200), opted_in: optedIn })])).max(500).nullish()
+      .describe("Invitees who would receive an invitation: names or ids, or {id, name, opted_in}"),
   })).max(50).optional().describe("Events in the next 14 days"),
-  new_members: z.array(z.object({ id: opt(200), name: opt(200), joined: z.string().max(40), welcomed: z.boolean().nullish() })).max(1000).optional(),
-  segments: z.array(z.object({ id: s(200), segment: s(40), eligible_now: z.boolean().nullish(), next_eligible: opt(40), opted_in: z.union([z.boolean(), s(60)]).nullish() })).max(5000).optional(),
-  planned_touches: z.array(z.object({ person: s(200), date: s(40), kind: opt(60) })).max(5000).optional().describe("Messages already scheduled, so the plan does not double up"),
+  new_members: z.array(z.object({ id: opt(200), name: opt(200), joined: z.string().max(40), welcomed: z.boolean().nullish(), opted_in: optedIn })).max(1000).optional(),
+  segments: z.array(z.object({ id: s(200), name: opt(200).describe("The member's name when id is a member_id, so the same person is recognised in every input"), segment: s(40), eligible_now: z.boolean().nullish(), next_eligible: opt(40), opted_in: optedIn })).max(5000).optional(),
+  planned_touches: z.array(z.object({ person: s(200), date: s(40), kind: opt(60), opted_in: optedIn })).max(5000).optional().describe("Messages already scheduled, so the plan does not double up"),
   options: z.object({
     max_items: z.number().int().min(1).max(20).optional(), spacing_days: z.number().int().min(1).max(60).optional(),
     min_gap_hours: z.number().int().min(0).max(720).optional(), reengagement_batch: z.number().int().min(1).max(50).optional(),

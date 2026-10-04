@@ -144,3 +144,30 @@ describe("fixture exports", () => {
     expect(fieldOf(o, "roles")).toBe("tags");
   });
 });
+
+describe("values and header rows that must never be echoed (review finding 12)", () => {
+  it("filters contact details out of status values as well as opt-in values", () => {
+    const o = d("x.csv", ["Name", "Status", "Consent"], [["A", "07700 900123", "+44 7700 900124"], ["B", "Active", "wa.me/447700900125"], ["C", "b@example.com", "yes"]]);
+    const s = JSON.stringify(o);
+    expect(s).not.toMatch(/7700|example\.com|wa\.me/);
+    expect(o.mapping.find((m) => m.field === "status")?.values).toEqual({ Active: "member" });
+    expect(o.mapping.find((m) => m.field === "opted_in")?.values).toEqual({ yes: "yes" });
+  });
+  it("treats a header row holding contact details as data: masks it, warns, and still reads its columns", () => {
+    const o = d("export.csv", ["Jane Doe", "jane.doe@example.com", "+44 7700 900123", "Acme"], [["Bo Chan", "bo@example.org", "+44 7700 900456", "Globex"], ["Cleo Dunn", "cleo@example.net", "07700 900789", "Initech"]]);
+    const s = JSON.stringify(o);
+    for (const leak of ["Jane", "jane.doe", "example", "7700", "Acme", "Bo Chan", "Globex"]) expect(s, leak).not.toContain(leak);
+    expect(o.mapping.find((m) => m.field === "email")?.column).toBe("column 2");
+    expect(o.contact_columns.map((c) => c.column)).toEqual(["column 3"]);
+    expect([...o.mapping.map((m) => m.column), ...o.unmapped.map((u) => u.column)].sort()).toEqual(["column 1", "column 2", "column 4"]);
+    expect(o.platform_guess.evidence).toEqual(["the first row looks like data, not column names"]);
+    expect(o.warnings.join(" ")).toMatch(/no header row/);
+  });
+  it("treats a mostly numeric or date header row as data too, but leaves real headers alone", () => {
+    expect(d("x.csv", ["Ann Lee", "2026-09-30", "42", "Acme"]).warnings.join(" ")).toMatch(/no header row/);
+    expect(d("x.csv", ["Name", "Joined", "Score", "Company"]).warnings.join(" ")).not.toMatch(/no header row/);
+  });
+  it("hides a source name that is itself a contact detail", () => {
+    expect(d("jane.doe@example.com", ["Name"]).source_name).not.toMatch(/example/);
+  });
+});

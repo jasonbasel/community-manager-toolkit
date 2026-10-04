@@ -9,7 +9,7 @@ Everything Jason needs to list v0.2 in both directories and to submit the hosted
    - add the connector to `plugin/.mcp.json` (type `http`, URL `https://toolkit.commonos.ai/mcp`);
    - change "These 21" in `plugin/CONNECTORS.md` to the new count;
    - bump `version` in both plugin manifests.
-2. **Make the GitHub repo public** (`jasonbasel/community-manager-toolkit`) and push `main`.
+2. **Merge `v0.2` into `main` and push** (`jasonbasel/community-manager-toolkit` is already public; the push updates it and the Claude directory reads `main`).
 3. **Claude:** submit the plugin bundle (§A), then the connector separately (§B).
 4. **ChatGPT:** verify as an individual, then submit the plugin with its MCP connection (§C).
 5. **After approval,** update the links (§D).

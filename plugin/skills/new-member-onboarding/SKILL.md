@@ -1,6 +1,6 @@
 ---
 name: new-member-onboarding
-description: "New member onboarding for community managers. Use this skill whenever someone wants to welcome a new member or a batch of new members, draft a welcome message or email, plan a member's first 30 days or an onboarding sequence, improve activation or early churn, or introduce newcomers to the community, even if they only say 'draft X's welcome'. It holds the rule that a welcome built around one named introduction beats a feature tour, plus consent, same-organisation and channel-format rules. Picks one person to meet and one upcoming event, drafts the welcome and the day-3, day-14 and day-30 check-ins for the community's channel, and logs the intro in the ledger. Drafts only; never sends."
+description: "Welcome messages and new member onboarding for community managers. Use this skill whenever someone wants to welcome a new member or a batch of new members, draft a welcome message or email, plan a member's first 30 days or an onboarding sequence, improve activation or early churn, or introduce newcomers to the community, even if they only say 'draft X's welcome'. It holds the rule that a welcome built around one named introduction beats a feature tour, plus consent, same-organisation and channel-format rules. Picks one person to meet and one upcoming event, drafts the welcome and the day-3, day-14 and day-30 check-ins for the community's channel, and logs the intro in the ledger. Drafts only; never sends."
 ---
 
 # New Member Onboarding
@@ -95,7 +95,9 @@ runner-up, and approves the event. If the user already asked for the welcome or 
 sequence, draft them now for the top pick, labelled pending approval.
 
 **Consent comes first.** Draft the consent ask to the named member (template 1,
-onboarding variant). The welcome goes out after they say yes. If there's no yes within
+onboarding variant), and draft the welcome naming them now, labelled "send after [name]
+says yes". Draft all four touches (welcome, day 3, day 14, day 30) in full. The welcome
+goes out after they say yes. If there's no yes within
 about 2 days, ask the runner-up. Don't hold the welcome more than about 3 days after
 joining: if nobody has said yes by then, send a welcome built around the event, naming no
 one, and keep looking.
@@ -129,7 +131,8 @@ If they reply to the day-14 message with an ask, run it as a new member introduc
 the day-30 answer is 2 or 3, flag it for the manager: a personal call or a second
 introduction.
 
-**Batches:** show one table with a row per new member (named person, reason, event),
+**Batches:** state the spacing you applied (one proactive touch per member per week),
+then show one table with a row per new member (named person, reason, event),
 approve it once, then draft grouped by member. Don't name the same existing member for
 several new members inside two weeks.
 

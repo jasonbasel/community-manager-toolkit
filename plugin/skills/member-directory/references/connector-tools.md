@@ -37,7 +37,8 @@ offer phrases); don't polish profiles first. The tool already enforces the
 same-organisation, avoid-list and cap rules, so don't re-check pairs against them. Use
 each group's `reason_hint` as the reason line, edited only for clarity (20 words or
 fewer; check it against the sensitive-attribute rule), and show the approval table from
-the returned groups, backups and unmatched list. For door mode,
+the returned groups, unmatched list and `backups`, with every guest's backup in the
+Backup column. For door mode,
 call it again with the arrivals only and the met pairs in `avoid_pairs`.
 
 **Member directory.** For each source, call `detect_member_fields` with the headers and

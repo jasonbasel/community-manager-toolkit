@@ -1,6 +1,6 @@
 ---
 name: member-introductions
-description: "Member introductions for community managers. Use this skill whenever someone asks to introduce two people, wants a warm intro, asks who in their community could help someone or who to introduce a member to, shares an intro or connection request (from WhatsApp, Slack, Discord, email or a list of requests), wants a consent message drafted, wants intro ledger rows, or asks to follow up on past introductions, even if they don't say 'introduction'. It holds the double opt-in consent flow, identity checks, same-organisation exclusion, cooldowns, the sales-pitch screen and tested message shapes. Ranks candidates with a runner-up, drafts the consent ask, connection message, lapse notice and follow-ups, and keeps the ledger with next-check dates. Drafts only; never sends."
+description: "Member introductions and warm intros (who to introduce to whom) for community managers. Use this skill whenever someone asks to introduce two people, wants a warm intro, asks who in their community could help someone or who to introduce a member to, shares an intro or connection request (from WhatsApp, Slack, Discord, email or a list of requests), wants a consent message drafted, wants intro ledger rows, or asks to follow up on past introductions, even if they don't say 'introduction'. It holds the double opt-in consent flow, identity checks, same-organisation exclusion, cooldowns, the sales-pitch screen and tested message shapes. Ranks candidates with a runner-up, drafts the consent ask, connection message, lapse notice and follow-ups, and keeps the ledger with next-check dates. Drafts only; never sends."
 ---
 
 # Member Introductions
@@ -168,7 +168,9 @@ can't tell which third, and the impact report has nothing to stand on.
 
 1. The ask in one line, and the screening result.
 2. The candidate table, then stop for the pick.
-3. Drafts for the current stage, each labelled with recipient and when to send.
+3. Drafts for the current stage, each labelled with recipient and when to send, and the
+   plan: yes → connection message, requester writes first within a day; no or silence
+   by [date] → lapse notice to the requester, then the runner-up.
 4. Ledger rows written, or the CSV.
 5. **Next steps**, always last. For example:
    - Send the consent ask yourself and tell me when it's gone, so I can set the dates.

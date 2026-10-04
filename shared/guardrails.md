@@ -149,6 +149,12 @@ Screen every intro request before searching for candidates.
   directory keeps only `email_domain` and `source_ids`. The only place they appear is the
   recipient field of a draft the manager asked you to create in their own email or chat
   tool, after both people said yes.
+- Never print an email address or part of one, even to explain a match ("matched on a
+  different work email" is enough).
+- Leave personal or sensitive content in chats, notes or forms (health, family,
+  relationships, money worries, anything private) out silently: don't say it existed,
+  whose it was or what it was about. If someone asked not to be contacted until a date,
+  record only "asked not to be contacted until [date]".
 - Don't copy full records, notes or chat messages into outputs; summarise in a line.
 - Don't quote members back (from a chat export, Slack or Discord messages, meeting notes,
   form or registration answers) unless it's needed for the task and the manager agrees.

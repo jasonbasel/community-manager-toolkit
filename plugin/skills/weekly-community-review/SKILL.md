@@ -1,6 +1,6 @@
 ---
 name: weekly-community-review
-description: "Weekly community review for community managers. Use this skill whenever someone asks what they should do this week or next, for a weekly review, a to-do list or plan for their community, what's due or overdue, or to catch them up, even if they just say 'what should I do this week?'. It holds the priority order and the spacing check so nobody gets two proactive messages in a week. Builds at most seven items from the intro ledger, member directory, events in the next 14 days, new members and recent activity (removal or opt-out requests, overdue intro answers, follow-ups, events to match, new members to welcome, a re-engagement batch, an impact report after a month or quarter ends), each with why now and the prompt to run it. Can run every Monday as a scheduled task. Drafts only when asked; never sends."
+description: "Weekly community plan ('what should I do this week?') for community managers. Use this skill whenever someone asks what they should do this week or next, for a weekly review, a to-do list or plan for their community, what's due or overdue, or to catch them up, even if they just say 'what should I do this week?'. It holds the priority order and the spacing check so nobody gets two proactive messages in a week. Builds at most seven items from the intro ledger, member directory, events in the next 14 days, new members and recent activity (removal or opt-out requests, overdue intro answers, follow-ups, events to match, new members to welcome, a re-engagement batch, an impact report after a month or quarter ends), each with why now and the prompt to run it. Can run every Monday as a scheduled task. Drafts only when asked; never sends."
 ---
 
 # Weekly Community Review
@@ -108,7 +108,9 @@ in `references/message-craft.md`. Nothing is sent.
 
 The first time, explain in two or three lines how to schedule it: most assistants can run
 a saved prompt as a scheduled task. Suggest every Monday at 08:30 in the profile's time
-zone, with the prompt "Run my weekly community review".
+zone, with the prompt "Run my weekly community review", and have each run save the review as
+a dated doc or file (for example "Community review 2026-10-05" in Notion, Google Docs or
+the project) so it can be read outside the chat.
 
 On a scheduled run:
 

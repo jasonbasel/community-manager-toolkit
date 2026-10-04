@@ -73,7 +73,10 @@ full menu only if the user asked what you can do or asked for help; otherwise en
 
 ## Step 3: Setup questions
 
-First fill what you can infer from the conversation, the tools you found and any files.
+First fill what you can infer from the conversation, the tools you found and any files:
+count members from rows, read type and location from the data, and never ask what a file
+answers. If there's an intro ledger, name anyone its notes mark as opted out or asking for
+removal in your reply (not in the profile) so the manager can confirm.
 Then ask only what's left, in at most two short batches of up to three questions each:
 
 - **Batch 1 (what blocks the most):**

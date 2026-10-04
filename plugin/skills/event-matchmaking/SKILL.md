@@ -1,6 +1,6 @@
 ---
 name: event-matchmaking
-description: "Event matchmaking for community managers. Use this skill whenever someone asks who should meet whom at an event, wants attendees paired or matched, asks who a particular guest should meet, needs icebreakers, a seating plan, a host sheet, pre-event 'find [name]' messages or a post-event follow-up, or shares a Luma, Eventbrite, Ticket Tailor or RSVPify guest list or an attendee CSV, even if they don't say 'matchmaking'. It holds rules you can't infer: same-organisation exclusion, neutral wording for organisations whose names signal a sensitive attribute, backups for no-shows, consent and approval steps. Produces an approval table, host sheet, message drafts for WhatsApp, email, Slack or Discord, a morning-after follow-up and ledger rows. Drafts only; never sends."
+description: "Event matchmaking and attendee pairing (who should meet whom) for community managers. Use this skill whenever someone asks who should meet whom at an event, wants attendees paired or matched, asks who a particular guest should meet, needs icebreakers, a seating plan, a host sheet, pre-event 'find [name]' messages or a post-event follow-up, or shares a Luma, Eventbrite, Ticket Tailor or RSVPify guest list or an attendee CSV, even if they don't say 'matchmaking'. It holds rules you can't infer: same-organisation exclusion, neutral wording for organisations whose names signal a sensitive attribute, backups for no-shows, consent and approval steps. Produces an approval table, host sheet, message drafts for WhatsApp, email, Slack or Discord, a morning-after follow-up and ledger rows. Drafts only; never sends."
 ---
 
 # Event Matchmaking
@@ -120,14 +120,14 @@ Then assign:
 Write one reason per pair, 20 words or fewer, from professional overlap and stated asks
 and offers only. Check each one against the sensitive-attribute rule.
 
-Lead with one line (pairs, trios, guests for the host to place), then show this table
-and stop:
+Lead with one line (pairs, trios, guests for the host to place), then this table
+(Backup is never blank: a name, or "host places at door"):
 
 | # | Guest | Organisation | Primary match | Reason | Backup | Strength | Flags |
 |---|---|---|---|---|---|---|---|
 
 Below it, list guests with no match, thin profiles, identity questions, and how many
-pairs each rule excluded; offer "show all" for the working list. No phone numbers or
+pairs each rule excluded; offer "show all". No phone numbers or
 emails. Ask the manager to approve, edit or remove rows. If they already asked for
 drafts, see Output item 2. After edits, re-check the changed rows against the guardrails
 and flag any that now break a rule.

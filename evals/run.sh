@@ -91,7 +91,7 @@ TS="$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$RESULTS_DIR"
 RESULTS_DIR="$(cd "$RESULTS_DIR" && pwd -P)"   # absolute, so the results/latest symlink resolves
 ln -sfn "$RESULTS_DIR" "$HERE/results/latest"
-python3 - "$RESULTS_DIR/run-info.json" "$MODEL" "${ARMS[*]}" "$(claude --version 2>/dev/null)" "$CONNECTOR_URL" <<'EOF'
+python3 - "$RESULTS_DIR/run-info.$MODE.json" "$MODEL" "${ARMS[*]}" "$(claude --version 2>/dev/null)" "$CONNECTOR_URL" <<'EOF'
 import json, sys, datetime
 path, model, arms, ver, connector_url = sys.argv[1:6]
 info = {"started": datetime.datetime.now().isoformat(timespec="seconds"), "model_alias": model,

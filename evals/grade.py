@@ -522,6 +522,7 @@ def main():
     ap.add_argument("--judge-model", default="claude-opus-4-8")
     ap.add_argument("--jobs", type=int, default=3)
     ap.add_argument("--no-judge", action="store_true")
+    ap.add_argument("--reuse-judge", action="store_true", help="take judge items from an existing grades.json in the results dir instead of calling the judge again")
     args = ap.parse_args()
     rdir = Path(args.results_dir).resolve()
     cases = {}
@@ -553,7 +554,18 @@ def main():
             jobs.append((cid, arm))
     has_conn = any(arm == "connector" for _, arm in data)
 
-    if not args.no_judge:
+    prev_grades = None
+    if args.reuse_judge:
+        gp = rdir / "grades.json"
+        if not gp.exists():
+            sys.exit("--reuse-judge: no grades.json in %s" % rdir)
+        prev_grades = json.loads(gp.read_text())
+        for job in jobs:
+            cid, arm = job
+            prev = prev_grades.get("cases", {}).get(cid, {}).get(arm, {})
+            data[job]["judge"] = [i for i in prev.get("items", []) if i.get("kind") == "judge"]
+            data[job]["judge_error"] = prev.get("judge_error")
+    if not args.no_judge and prev_grades is None:
         def work(job):
             cid, arm = job
             d = data[job]
@@ -576,8 +588,14 @@ def main():
 
     # ---- summary.md
     info = {}
-    if (rdir / "run-info.json").exists():
-        info = json.loads((rdir / "run-info.json").read_text())
+    # Parallel arms each write their own run-info.<mode>.json; older runs have one run-info.json.
+    for ip in sorted(rdir.glob("run-info*.json")):
+        try:
+            got = json.loads(ip.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        for k, v in got.items():
+            info.setdefault(k, v)
     md = ["# Eval summary: %s" % rdir.name, "",
           "- Model under test: `%s` (claude CLI %s)" % (info.get("model_alias", "?"), info.get("claude_version", "?")),
           "- Judge: `%s`%s" % (args.judge_model, " (skipped: deterministic checks only)" if args.no_judge else ""),

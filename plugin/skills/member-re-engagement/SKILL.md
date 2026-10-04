@@ -1,6 +1,6 @@
 ---
 name: member-re-engagement
-description: "Member re-engagement for community managers. Use this skill whenever someone wants to message inactive, quiet, dormant or lapsed members, run a win-back or reactivation campaign, reduce churn, tell 'all members' or 'everyone inactive' about something, or re-engage people who have gone dark or were never contacted, even if they just say 'message all inactive members'. It holds the evidence on why broadcasts fail, the spacing rules and the right touch for each engagement segment. Segments members by activity, warns when a plan is really a broadcast and what it costs, and drafts a small batch of personal messages for approval. Drafts only; never sends."
+description: "Messages to inactive members, win-backs and re-engagement for community managers. Use this skill whenever someone wants to message inactive, quiet, dormant or lapsed members, run a win-back or reactivation campaign, reduce churn, tell 'all members' or 'everyone inactive' about something, or re-engage people who have gone dark or were never contacted, even if they just say 'message all inactive members'. It holds the evidence on why broadcasts fail, the spacing rules and the right touch for each engagement segment. Segments members by activity, warns when a plan is really a broadcast and what it costs, and drafts a small batch of personal messages for approval. Drafts only; never sends."
 ---
 
 # Member Re-engagement

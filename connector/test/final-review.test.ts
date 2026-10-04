@@ -70,3 +70,27 @@ describe("phones split by separators in labels and source names", () => {
     expect(JSON.stringify(out)).not.toContain("900311");
   });
 });
+
+describe("regression review of 63d607b", () => {
+  it("R1: a masked WhatsApp label still drops a bare phone-shaped ID, and masked sources keep separate names", async () => {
+    const { mergeMemberRecords } = await import("../src/tools/merge.js");
+    const out = mergeMemberRecords({ records: [
+      { source: "WhatsApp_Chat_with_+44_7700_900311", source_id: "447700900311", name: "Ana Reyes" },
+      { source: "Chat - 07700 900322 - export.txt", source_id: "123", name: "Bo Chan" },
+      { source: "Chat - 07700 900333 - export.txt", source_id: "123", name: "Cy Dee" },
+    ] });
+    const text = JSON.stringify(out);
+    expect(text).not.toContain("447700900311");
+    expect(text).not.toContain("900322");
+    expect(text).not.toContain("900333");
+    expect(out.stats.unique_members).toBe(3); // same "123" under two different masked sources must not merge
+  });
+  it("R2: reports about replies or a dead address are not refusals; instructions next to them still are", () => {
+    for (const n of ["No further reply to my email", "Doesn't respond to emails", "Her email no longer works", "No longer replies to messages"]) expect(signal(n), n).toBe(false);
+    for (const n of ["Do not contact; her email no longer works", "No further contact please, she no longer replies"]) expect(signal(n), n).toBe(true);
+  });
+  it("R3: date- and time-stamped labels are not phone numbers", () => {
+    for (const l of ["event-30-09-2026", "Slack 30.09.2026", "luma 2026-09-30 14.05", "export_30.09.2026", "members-20260930"]) expect(labelHasContact(l), l).toBe(false);
+    for (const l of ["whatsapp-chat-44-7700-900311", "WhatsApp_Chat_07700_900311", "Chat - 07700 900311 - 30.09.2026.txt"]) expect(labelHasContact(l), l).toBe(true);
+  });
+});

@@ -85,10 +85,13 @@ const DATE_STAMP = /^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/;
  * A source label (or ID prefix) that carries a contact detail: an email, link or phone shape anywhere in it, or a run of
  * seven or more digits ("whatsapp-447700900311") that is not a date stamp. Such a label is never echoed.
  */
+const DATE_TIME_TOKENS = /\b(?:\d{1,2}[-./]\d{1,2}[-./](?:\d{4}|\d{2})|\d{4}[-./]\d{1,2}[-./]\d{1,2})(?:[ T-]?\d{1,2}[.:]\d{2}(?:[.:]\d{2})?)?\b|\b\d{1,2}[.:]\d{2}(?:[.:]\d{2})?\b/g;
 export const labelHasContact = (label: string): boolean => {
   if (idContactKind(label) || findPhones(label).length > 0) return true;
-  // Join digit groups split by separators ("44-7700-900311", "+44_7700_900311") before looking for long runs.
-  const joined = label.replace(/(?<=\d)[\s\-_.()+]+(?=[\d+])/g, "").replace(/\+/g, "");
+  // Dates and times ("event-30-09-2026", "luma 2026-09-30 14.05") are not phone numbers: drop them first. Then join digit
+  // groups split by separators ("44-7700-900311", "+44_7700_900311") before looking for long runs.
+  const undated = label.replace(/_/g, " ").replace(DATE_TIME_TOKENS, " ");
+  const joined = undated.replace(/(?<=\d)[\s\-_.()+]+(?=[\d+])/g, "").replace(/\+/g, "");
   return (joined.match(/\d{7,}/g) ?? []).some((run) => !DATE_STAMP.test(run));
 };
 
@@ -145,12 +148,17 @@ export function mergeMemberRecords(input: MergeInput) {
   const droppedIds: number[] = [];
 
   // ---- 1. prepare ----
+  const masked = new Map<string, string>();
+  const maskedName = (orig: string) => { let n = masked.get(orig); if (!n) { n = `masked-source-${masked.size + 1}`; masked.set(orig, n); } return n; };
   const recs: Prep[] = input.records.map((r, i) => {
     // A source label that carries a contact detail ("+44 7700 900999", "whatsapp-447700900311") would be echoed in source_ids and by_source.
     const unsafeSource = labelHasContact(String(r.source ?? ""));
     if (unsafeSource) unsafeSources++;
-    const source = unsafeSource ? "unknown" : sourceLabel(r.source);
-    const kind = sourceKind(source);
+    // The original label still decides the source kind and the phone-channel ID rule; only the echoed name is masked,
+    // and each distinct masked source gets its own name so their IDs never share one namespace.
+    const originalSource = sourceLabel(r.source);
+    const source = unsafeSource ? maskedName(originalSource) : originalSource;
+    const kind = sourceKind(originalSource);
     let rawName = (r.name ?? "").trim() || [r.first_name, r.last_name].filter((x) => x && String(x).trim()).join(" ").trim();
     if (rawName && (isEmailLike(rawName) || isPhoneLike(rawName))) rawName = "";
     if (!rawName) nameless++;
@@ -177,8 +185,8 @@ export function mergeMemberRecords(input: MergeInput) {
       // (no prefix, or a generic one such as "id:", "chat:", "csv:") is judged by the record's source label as well, so every ID of a
       // "WhatsApp export" or "sms" record is dropped. Labels are matched as whole words, never a country-code guess. The whole entry is
       // checked for emails and links (they contain ":"), and a prefix carrying a contact detail drops the ID too.
-      const own = !!prefix && (isPlatformPrefix(prefix) || sourceLabel(prefix) === source);
-      const labels = own ? [prefix] : [prefix, source].filter(Boolean);
+      const own = !!prefix && (isPlatformPrefix(prefix) || sourceLabel(prefix) === originalSource);
+      const labels = own ? [prefix] : [prefix, originalSource].filter(Boolean);
       if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { labels, handles: true }) || (prefix && labelHasContact(prefix))) { dropped = true; return; }
       ids.push(colon >= 0 && (listed || own) ? s : `${source}:${s}`);
     };
@@ -479,7 +487,7 @@ export function mergeMemberRecords(input: MergeInput) {
   if (badDates) warnings.push(`${badDates} date value(s) could not be read and were left blank (use YYYY-MM-DD).`);
   if (nameless) warnings.push(`${nameless} record(s) had no usable name.`);
   if (droppedIds.length) warnings.push(`Source IDs that looked like contact details (an email address, phone number, link or handle) were dropped from ${indexList(droppedIds)}; contact details are never used as IDs.`);
-  if (unsafeSources) warnings.push(`${unsafeSources} record(s) had a contact detail as their source name; it was replaced with 'unknown'.`);
+  if (unsafeSources) warnings.push(`${unsafeSources} record(s) had a contact detail as their source name; it was replaced with 'masked-source-N'.`);
   const placeholderNamed = mi.filter((x) => x.key && isPlaceholderName(x.key)).length;
   if (placeholderNamed) warnings.push(`${placeholderNamed} member(s) have a placeholder name (such as 'Unknown', 'Test' or initials only), so they were not matched by name; fix the names in the source.`);
   if (bigNameGroups) warnings.push(`${bigNameGroups} name(s) are shared by more than ${MAX_COMPARE_GROUP} members each and were not compared pair by pair (usually test or placeholder data).`);

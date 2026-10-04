@@ -241,7 +241,7 @@ describe("source IDs that are contact details (review finding 2)", () => {
     expect(w).toMatch(/records\[0\], records\[1\], records\[2\], records\[3\], records\[4\], records\[5\], records\[6\], records\[7\], records\[8\]/);
     expect(w).not.toMatch(/records\[9\]|records\[10\]/);
     expect(o.warnings.join(" ")).toMatch(/1 record\(s\) had a contact detail as their source name/);
-    expect(one(o, "Juno Kay").source_ids).toEqual(["unknown:77"]);
+    expect(one(o, "Juno Kay").source_ids).toEqual(["masked-source-1:77"]);
   });
   it("keeps real platform IDs, including bare numbers from non-phone sources", () => {
     expect(one(m(recs), "Kit Lam").source_ids).toEqual(["discord:113693792436467651", "hubspot:4155550100", "slack:U0ABC123"]);
@@ -311,7 +311,7 @@ describe("source labels and generic prefixes never carry a phone number (final-r
     for (const source of ["whatsapp-447700900311", "WA 07700 900311", "sms_4155550100", "+44 7700 900999", "export-1790000000"]) {
       const o = m([{ source, name: "Ann Lee", source_id: "77" }]);
       expect(JSON.stringify(o), source).not.toMatch(/7700|4155550100|1790000000/);
-      expect(o.stats.by_source, source).toEqual({ unknown: 1 });
+      expect(o.stats.by_source, source).toEqual({ "masked-source-1": 1 });
       expect(o.warnings.join(" "), source).toMatch(/1 record\(s\) had a contact detail as their source name/);
     }
   });

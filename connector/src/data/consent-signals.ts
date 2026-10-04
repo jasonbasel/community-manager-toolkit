@@ -44,7 +44,7 @@ export interface SignalRule { id: string; re: RegExp }
  */
 const NEG = String.raw`(?:not|never|no longer|didnt|did not|hasnt|has not|havent|have not|hadnt|had not|doesnt|does not|dont|do not|wont|will not|isnt|is not|arent|are not|wasnt|was not|werent|were not)`;
 /** "stopped replying", "stopped coming": reports what happened, not a request to stop contact. */
-export const STOPPED_REPORTING = /\bstop(?:ped|s|ping)?\s+(?:repl\w*|respond\w*|answer\w*|engag\w*|coming|attending|showing up|turning up)\b/g;
+export const STOPPED_REPORTING = /\b(?:stop(?:ped|s|ping)?|no further|no longer|not|doesnt|does not|didnt|did not|never|hasnt|has not|havent|have not|wont|will not)\s+(?:\w+\s+){0,2}?(?:repl(?:y|ies|ied|ying)|respon(?:d|ds|ded|ding|se|ses)|answer(?:s|ed|ing)?|engag\w*|coming|attending|showing up|turning up|works?|working|valid|active|bounc\w*|deliver\w*)\b/g;
 
 export const SIGNAL_CANCELLERS: readonly RegExp[] = [
   new RegExp(String.raw`\b${NEG}\s+(?:yet\s+|actually\s+|formally\s+|ever\s+|been\s+|officially\s+)*opt(?:ed|s|ing)?\s?out\b`, "g"),

@@ -113,7 +113,8 @@ class People {
     const out: { k: string; rank: number; label: string }[] = [];
     const idKey = (s: string) => `i:${exactKey(s)}`;
     const nk = (s: string) => { const k = nameKey(s); return k && !isPlaceholderName(k) ? `n:${k}` : ""; };
-    // A placeholder word ("Unknown", "J S") is never a key in any form; a name that normalises to nothing ("☺") still has its exact key.
+    // A placeholder word ("Unknown", "J S") never gets a name key, only its exact string: "J S" joins "J S" but never "J. S." or
+    // another normalised form. A name that normalises to nothing ("☺") still has its exact key.
     const placeholder = (s: string) => { const k = nameKey(s); return !!k && isPlaceholderName(k); };
     // Whitespace-free exact key: "王芳" and "王 芳" are one person (over-joining only ever holds more people).
     const compact = (s: string) => { const k = exactKey(s).replace(/\s+/g, ""); return k ? `c:${k}` : ""; };

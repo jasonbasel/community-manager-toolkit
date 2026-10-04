@@ -13,8 +13,19 @@ export const BARE_COUNTRY_CODES: readonly (readonly [string, number, number])[] 
   ["61", 9, 9], ["27", 9, 9], ["234", 10, 10], ["254", 9, 9], ["971", 9, 9], ["966", 9, 9], ["55", 10, 11], ["52", 10, 10],
 ];
 
-/** Source words whose IDs are phone numbers (a bare number from these sources is a contact detail). */
-export const PHONE_ID_SOURCES: readonly string[] = ["whatsapp", "sms", "signal", "viber", "imessage", "phone", "mobile", "text", "texts"];
+/*
+ * Labels (a record's source, or an ID's own prefix such as "wa:") that say what an ID is. Distinctive
+ * names count as a word anywhere in the label ("whatsapp-export"); generic or short ones only as the
+ * whole label, separators ignored ("wa_id", "tel", "mobile"; never "mobile-app" or "tel-aviv").
+ */
+/** IDs under these labels are phone numbers. */
+export const PHONE_ID_WORDS: readonly string[] = ["whatsapp", "msisdn", "sms", "viber", "imessage"];
+export const PHONE_ID_LABELS: readonly string[] = [
+  "wa", "waid", "tel", "phone", "phones", "phonenumber", "telephone", "mobile", "mobilenumber", "cell", "cellphone", "text", "texts", "signal",
+];
+/** IDs under these labels are handles or profile slugs (contact details) unless they are opaque numeric IDs or URNs. */
+export const HANDLE_ID_WORDS: readonly string[] = ["linkedin", "telegram", "twitter", "instagram", "facebook", "tiktok", "bluesky", "mastodon", "snapchat"];
+export const HANDLE_ID_LABELS: readonly string[] = ["x", "threads", "ig", "fb", "tg"];
 
 /** Whole normalised names that are placeholders, not people. */
 export const PLACEHOLDER_NAMES: readonly string[] = [

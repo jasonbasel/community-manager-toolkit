@@ -1,8 +1,9 @@
 /** detect_member_fields: map an export's columns to the canonical member fields (DESIGN §4.1). */
 import {
-  ASK_HELP_PHRASES, ASK_PHRASES, CONTACT_PATTERNS, GENERIC_ALIASES, IGNORED_HEADERS, MULTI_FIELDS, NOTE_PHRASES, NOT_ACTIVITY_PATTERNS,
+  ASK_HELP_PHRASES, ASK_PHRASES, CONTACT_PATTERNS, GENERIC_ALIASES, HEADER_WORDS, IGNORED_HEADERS, MULTI_FIELDS, NOTE_PHRASES, NOT_ACTIVITY_PATTERNS,
   OFFER_PHRASES, SENSITIVE_COLUMN_PATTERNS, type AliasRule, type CanonicalField,
 } from "../fields/aliases.js";
+import { MATCH_SUFFIXES } from "../data/organisations.js";
 import { GENERIC_FORM, GENERIC_SHEET, PLATFORMS, type Platform } from "../fields/platforms.js";
 import { OPT_IN_NO, OPT_IN_YES, STATUS_VALUES, DEACTIVATED_VALUES } from "../data/sources.js";
 import { fold, isEmailLike, isPhoneLike, isUrlLike, parseDate, plain } from "../text/normalise.js";
@@ -22,6 +23,8 @@ export interface MappingEntry {
   values?: Record<string, "yes" | "no" | "unknown" | string>;
   date_format?: "ISO" | "DD/MM/YYYY" | "MM/DD/YYYY" | "ambiguous: read day-first" | "timestamp";
   splits?: "role_at_organisation";
+  /** Sample values seen in a consent or status column that are not consent or status words: counted, never shown. */
+  unlisted_values?: number;
 }
 export interface ColumnNote { column: string; reason: string }
 export interface DetectOutput {
@@ -105,42 +108,60 @@ function dateFormat(values: string[]): MappingEntry["date_format"] | undefined {
 }
 
 const truthy = (v: string) => ["1", "true", "yes", "y", "x", "checked"].includes(v);
-/** Values that must never be returned (the schema promises sample values are not echoed; category labels are). */
 const contactLike = (v: string) => isEmailLike(v) || isPhoneLike(v) || isUrlLike(v);
-const returnable = (raw: string) => !!raw && raw.length <= 40 && !contactLike(raw);
+/**
+ * Sample values are never returned, except the words of a consent or status vocabulary (subscribed, opted out,
+ * yes/no, 1/0, marketing contact, member, lapsed …). Anything else ("Pregnant", a note, a date) is only counted.
+ */
+const VALUE_VOCAB = new Set([...OPT_IN_YES, ...OPT_IN_NO, ...Object.keys(STATUS_VALUES), ...DEACTIVATED_VALUES,
+  "0", "1", "y", "n", "x", "true", "false", "checked", "unchecked", "pending", "cleaned", "transactional", "not subscribed", "never subscribed"]);
+const listable = (raw: string) => !!raw && raw.length <= 40 && !contactLike(raw) && VALUE_VOCAB.has(fold(raw).trim());
 /** A header cell that is really data: a contact detail, a number, a date or a yes/no. */
 const dataLike = (h: string) => contactLike(h) || /^[\d\s.,:/+\-()%£$€]+$/.test(h) || parseDate(h) !== null || /^(?:true|false|yes|no)$/i.test(h);
+/** A cell that reads like a person ("Jane Doe") or an organisation ("Acme Ltd") rather than a column name. */
+const personLike = (h: string) => /^\p{Lu}[\p{L}'’.-]*(?: \p{Lu}[\p{L}'’.-]*){1,3}$/u.test(h);
+const orgSuffixes = new Set(MATCH_SUFFIXES.flatMap((s) => s.split(" ")));
+const orgLike = (h: string) => { const t = plain(h).split(" "); return t.length >= 2 && orgSuffixes.has(t[t.length - 1]); };
+const headerWords = new Set(HEADER_WORDS);
 
-function optInValues(values: string[], inverted: boolean, preset?: Record<string, string>): Record<string, string> {
+function optInValues(values: string[], inverted: boolean, preset?: Record<string, string>): { values: Record<string, string>; unlisted: number } {
   const out: Record<string, string> = {};
-  for (const raw of [...new Set(values.map((v) => v.trim()))].slice(0, 12)) {
-    if (!returnable(raw)) continue;
+  let unlisted = 0;
+  for (const raw of [...new Set(values.map((v) => v.trim()).filter(Boolean))].slice(0, 12)) {
     const v = fold(raw);
     const p = preset?.[v];
-    if (p) out[raw] = p;
+    if (p && !contactLike(raw)) out[raw] = p;
+    else if (!listable(raw)) unlisted++;
     else if (inverted) out[raw] = truthy(v) || v.length > 3 ? "no" : "unknown";
     else out[raw] = yes.has(v) ? "yes" : no.has(v) ? "no" : "unknown";
   }
-  return out;
+  return { values: out, unlisted };
 }
 
-function statusValues(values: string[]): Record<string, string> {
+function statusValues(values: string[]): { values: Record<string, string>; unlisted: number } {
   const out: Record<string, string> = {};
-  for (const raw of [...new Set(values.map((v) => v.trim()))].slice(0, 12)) {
-    if (!returnable(raw)) continue;
+  let unlisted = 0;
+  for (const raw of [...new Set(values.map((v) => v.trim()).filter(Boolean))].slice(0, 12)) {
+    if (!listable(raw)) { unlisted++; continue; }
     const v = fold(raw);
     out[raw] = DEACTIVATED_VALUES.includes(v) ? "deactivated account (note only)" : STATUS_VALUES[v] ?? "not recognised (left blank)";
   }
-  return out;
+  return { values: out, unlisted };
 }
 
 export function detectMemberFields(input: DetectInput): DetectOutput {
   const given = input.headers.map((h) => String(h ?? "").trim());
   given.forEach((h, i) => { if (!h) throw new InputError(`headers[${i}] is empty; pass the header text exactly as it appears in the export`); });
   const sourceName = isEmailLike(input.source_name) || isPhoneLike(input.source_name) ? "(source name not shown: it looks like a contact detail)" : input.source_name;
-  // A header row that holds a contact detail, or is mostly numbers and dates, is the first data row of an export
-  // with no header row: never echo it. Columns are then named by position and that row is read as a sample.
-  const headerless = given.some(contactLike) || given.filter(dataLike).length >= Math.max(2, Math.ceil(given.length / 2));
+  // A header row that holds a contact detail, is mostly numbers and dates, or is names and organisations with nothing
+  // that reads as a column name, is the first data row of an export with no header row: never echo it. Columns are
+  // then named by position and that row is read as a sample.
+  const knownHeader = (k: string) => !!GENERIC_ALIASES[k] || !!IGNORED_HEADERS[k] || phraseField(k) !== null || containsField(k) !== null
+    || k.split(" ").some((t) => headerWords.has(t)) || [...CONTACT_PATTERNS, ...SENSITIVE_COLUMN_PATTERNS, ...NOT_ACTIVITY_PATTERNS].some((re) => re.test(k))
+    || PLATFORMS.some((p) => !!p.overrides?.[k] || p.signals.some((sg) => sg.h === k));
+  const headerless = given.some(contactLike) || given.filter(dataLike).length >= Math.max(2, Math.ceil(given.length / 2))
+    || (!given.some((h) => knownHeader(hkey(h))) && given.some((h) => personLike(h) || orgLike(h))
+      && given.filter((h) => personLike(h) || orgLike(h) || dataLike(h)).length >= Math.ceil(given.length / 2));
   const raws = headerless ? given.map((_h, i) => `column ${i + 1}`) : given;
   // Disambiguate duplicate headers so every column is reported once.
   const seen = new Map<string, number>();
@@ -243,12 +264,14 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
     }
     if (e.field === "opted_in") {
       const preset = e.values as Record<string, string> | undefined;
-      const seenVals = optInValues(vals, !!e.inverted, preset ? Object.fromEntries(Object.entries(preset).map(([k2, v]) => [fold(k2), v])) : undefined);
-      const seenKeys = new Set(Object.keys(seenVals).map((k2) => fold(k2)));
+      const seen = optInValues(vals, !!e.inverted, preset ? Object.fromEntries(Object.entries(preset).map(([k2, v]) => [fold(k2), v])) : undefined);
+      const seenKeys = new Set(Object.keys(seen.values).map((k2) => fold(k2)));
       const rest = Object.fromEntries(Object.entries(preset ?? {}).filter(([k2]) => !seenKeys.has(fold(k2))));
-      if (Object.keys(seenVals).length || Object.keys(rest).length) e.values = { ...seenVals, ...rest };
+      if (Object.keys(seen.values).length || Object.keys(rest).length) e.values = { ...seen.values, ...rest };
+      if (seen.unlisted) e.unlisted_values = seen.unlisted;
     }
-    if (e.field === "status" && vals.length) e.values = statusValues(vals);
+    if (e.field === "status" && vals.length) { const sv = statusValues(vals); e.values = sv.values; if (sv.unlisted) e.unlisted_values = sv.unlisted; }
+    if (e.unlisted_values) warnings.push(`'${e.column}' has ${e.unlisted_values} sample value(s) that are not consent or status words; they are counted, not shown.`);
     if (e.field === "email" && vals.length && vals.filter((v) => isEmailLike(v)).length < vals.length * 0.5) {
       e.confidence = Math.min(e.confidence, 0.4);
       warnings.push(`'${e.column}' does not hold email addresses in the sample rows; check the mapping.`);

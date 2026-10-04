@@ -186,7 +186,7 @@ export function createApp(opts: AppOptions = {}) {
   });
   app.notFound((c) => c.text("Not found", 404, PAGE_HEADERS));
   app.onError((err, c) => {
-    log({ event: "http_error", path: new URL(c.req.url).pathname, error: err.name }, "ERROR");
+    log({ event: "http_error", path: knownPath(new URL(c.req.url).pathname), error: err.name }, "ERROR");
     return c.req.path === "/mcp" ? c.json(rpcError(-32603, "Internal error"), 500) : c.text("Internal error", 500, PAGE_HEADERS);
   });
   return app;

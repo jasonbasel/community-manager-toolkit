@@ -180,7 +180,7 @@ describe("bounded uncertain matches (review finding 1)", () => {
     expect(performance.now() - t0).toBeLessThan(1000);
     expect(o.uncertain_matches).toHaveLength(MAX_UNCERTAIN);
     expect(o.stats).toMatchObject({ uncertain_total: 20 * ((250 * 249) / 2), uncertain_listed: MAX_UNCERTAIN });
-    expect(o.warnings.join(" ")).toMatch(/622500 uncertain matches were found; the 500 strongest are listed/);
+    expect(o.warnings.join(" ")).toMatch(/622500 uncertain matches between members were found; the 500 strongest are listed/);
     const scores = o.uncertain_matches.map((u) => u.score);
     expect([...scores].sort((a, b) => b - a)).toEqual(scores);
   });
@@ -205,6 +205,17 @@ describe("bounded uncertain matches (review finding 1)", () => {
     ]);
     expect(performance.now() - t0).toBeLessThan(1000);
     expect(o.uncertain_matches).toHaveLength(MAX_UNCERTAIN);
+    const listedAccounts = new Set(o.uncertain_matches.filter((u) => u.a.id.startsWith("u_")).map((u) => u.a.id)).size;
+    expect(o.warnings.join(" ")).toContain(`2500 chat account(s) have no email or organisation and did not match anyone for certain, so they are not counted as members; ${listedAccounts} of them are listed`);
+  });
+  it("keeps unresolved chat accounts listed even when member pairs fill their cap (round-2 7)", () => {
+    const o = m([
+      ...Array.from({ length: 1000 }, (_v, i) => ({ source: "hubspot", name: `Sam${i % 4} Patel${i % 4}` })),
+      ...Array.from({ length: 30 }, (_v, i) => ({ source: "discord", source_id: String(900000 + i), name: `zz_handle_${i}` })),
+    ]);
+    expect(o.uncertain_matches.filter((u) => u.b && !u.a.id.startsWith("u_"))).toHaveLength(MAX_UNCERTAIN);
+    expect(o.uncertain_matches.filter((u) => u.kind === "chat_handle")).toHaveLength(30);
+    expect(o.warnings.join(" ")).toMatch(/30 chat account\(s\) .*; each is listed in uncertain_matches/);
   });
 });
 
@@ -234,6 +245,29 @@ describe("source IDs that are contact details (review finding 2)", () => {
   });
   it("keeps real platform IDs, including bare numbers from non-phone sources", () => {
     expect(one(m(recs), "Kit Lam").source_ids).toEqual(["discord:113693792436467651", "hubspot:4155550100", "slack:U0ABC123"]);
+  });
+});
+
+describe("source IDs judged by their prefix and the record's source (round-2 4)", () => {
+  const ids = (rec: MergeRecord) => m([rec]).members[0]?.source_ids ?? [];
+  it("drops phone-shaped IDs under WhatsApp, tel, wa_id, msisdn and generic prefixes on phone sources", () => {
+    const o = m([{ source: "whatsapp", name: "Ann Lee", source_id: "447700900310", source_ids: ["wa:447700900311", "tel:447700900312", "wa_id:447700900313", "msisdn:447700900314", "id:447700900315", "phone:447700900316", "whatsapp:annlee"] }]);
+    expect(JSON.stringify(o)).not.toMatch(/4477009003|annlee/);
+    expect(o.members[0].source_ids).toEqual(["whatsapp"]);
+    expect(ids({ source: "hubspot", name: "Bo Chan", source_ids: ["wa:447700900311", "tel:+447700900312"] })).toEqual(["hubspot"]);
+  });
+  it("drops handles and profile slugs under social labels, keeping opaque numeric IDs and URNs", () => {
+    expect(ids({ source: "linkedin", name: "Cleo Dunn", source_ids: ["linkedin:cleo-dunn-1234", "linkedin:urn:li:person:AbC12345", "linkedin:123456789"] }))
+      .toEqual(["linkedin:123456789", "linkedin:urn:li:person:AbC12345"]);
+    expect(ids({ source: "telegram", name: "Fen Gill", source_ids: ["telegram:fengill", "telegram:123456789", "x:fen_gill", "x:1234567890123", "slack:U0ABC123"] }))
+      .toEqual(["slack:U0ABC123", "telegram:123456789", "x:1234567890123"]);
+    expect(ids({ source: "linkedin", name: "Dara Eze", source_id: "dara-eze" })).toEqual(["linkedin"]);
+  });
+  it("matches generic words only as the whole label", () => {
+    expect(ids({ source: "mobile-app", name: "Eli Fox", source_id: "4155550100" })).toEqual(["mobile-app:4155550100"]);
+    expect(ids({ source: "tel-aviv-chapter", name: "Gus Hart", source_id: "12345678" })).toEqual(["tel-aviv-chapter:12345678"]);
+    expect(ids({ source: "slack-threads", name: "Hana Ito", source_id: "U0HANA1" })).toEqual(["slack-threads:U0HANA1"]);
+    expect(ids({ source: "mobile", name: "Ivo Jay", source_id: "4155550100" })).toEqual(["mobile"]);
   });
 });
 

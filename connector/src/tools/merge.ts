@@ -8,7 +8,7 @@ import {
   ASKS_PRECEDENCE, DEACTIVATED_VALUES, IDENTITY_PRECEDENCE, OPT_IN_NO, OPT_IN_YES, SOURCE_KINDS, STATUS_VALUES, type SourceKind,
 } from "../data/sources.js";
 import {
-  cmp, daysBetween, displayOrg, emailParts, findSensitive, firstNameRelation, fold, hasSensitive, idContactKind, isEmailLike, isPhoneLike, isUrlLike,
+  cmp, daysBetween, displayOrg, emailParts, findSensitive, firstNameRelation, fold, hasSensitive, idContactKind, isEmailLike, isHandleLabel, isPhoneLabel, isPhoneLike, isUrlLike,
   isPlaceholderName, jaroWinkler, nameKey, orgKey, parseDate, plain, scrubContacts, tidyName, toList, todayIso, type DateOrder, type EmailParts,
 } from "../text/normalise.js";
 import { InputError } from "./errors.js";
@@ -101,6 +101,7 @@ class TopMatches {
   private static order(x: { score: number; ak: string; bk: string; aid: string; bid: string }, y: typeof x): number {
     return y.score - x.score || cmp(x.ak, y.ak) || cmp(x.bk, y.bk) || cmp(x.aid, y.aid) || cmp(x.bid, y.bid);
   }
+  static compare(x: { u: UncertainMatch; ak: string; bk: string }, y: typeof x): number { return TopMatches.order(TopMatches.flat(x), TopMatches.flat(y)); }
   private static flat(e: { u: UncertainMatch; ak: string; bk: string }) { return { score: e.u.score, ak: e.ak, bk: e.bk, aid: e.u.a.id, bid: e.u.b?.id ?? "" }; }
   admits(score: number, ak: string, bk: string, aid: string, bid: string): boolean {
     return !this.worst || TopMatches.order({ score, ak, bk, aid, bid }, this.worst) < 0;
@@ -114,7 +115,7 @@ class TopMatches {
     this.items.length = Math.min(this.items.length, this.k);
     if (this.items.length === this.k) this.worst = TopMatches.flat(this.items[this.k - 1]);
   }
-  result(): UncertainMatch[] { this.trim(); return this.items.map((e) => e.u); }
+  result(): { u: UncertainMatch; ak: string; bk: string }[] { this.trim(); return this.items; }
 }
 
 export function mergeMemberRecords(input: MergeInput) {
@@ -152,9 +153,12 @@ export function mergeMemberRecords(input: MergeInput) {
       const s = raw == null ? "" : String(raw).trim();
       if (!s) return;
       const colon = prefixed ? s.indexOf(":") : -1;
-      const label = colon > 0 ? s.slice(0, colon) : source, value = colon >= 0 ? s.slice(colon + 1) : s;
-      // The whole entry is checked for emails and links (they contain ":"); the ID part by the ID rules (bare platform numbers are fine).
-      if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { source: label, handles: true }) || (colon > 0 && idContactKind(label))) { dropped = true; return; }
+      const prefix = colon > 0 ? s.slice(0, colon) : "", value = colon >= 0 ? s.slice(colon + 1) : s;
+      // Judged by the ID's own prefix when it names a platform ("wa:", "linkedin:", "slack:"); otherwise (no prefix, or a generic one
+      // such as "id:") by the record's source as well. The whole entry is checked for emails and links (they contain ":").
+      const platformPrefix = prefix && (isPhoneLabel(prefix) || isHandleLabel(prefix) || sourceKind(sourceLabel(prefix)) !== "other");
+      const labels = platformPrefix ? [prefix] : [prefix, source].filter(Boolean);
+      if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { labels, handles: true }) || (prefix && idContactKind(prefix))) { dropped = true; return; }
       ids.push(colon >= 0 ? s : `${source}:${s}`);
     };
     addId(r.source_id, false);
@@ -329,12 +333,13 @@ export function mergeMemberRecords(input: MergeInput) {
     return { m, key, first: t[0] ?? "", last: t.length > 1 ? t[t.length - 1] : "", org: orgKey(m.organisation), ref: ref(m) };
   });
   const named = mi.filter((x) => x.key && !isPlaceholderName(x.key));
-  const top = new TopMatches(MAX_UNCERTAIN);
-  let uncertainTotal = 0;
-  const admit = (score: number, ak: string, a: Ref, bk: string, b: Ref | null) => {
+  // Pairs of members and rows about unresolved chat accounts are capped separately, so cheap account rows are never crowded out.
+  const top = new TopMatches(MAX_UNCERTAIN), accountTop = new TopMatches(MAX_UNCERTAIN);
+  const total = { members: 0, accounts: 0 };
+  const admit = (score: number, ak: string, a: Ref, bk: string, b: Ref | null, into = top) => {
     if (b && different.has(pairKey(a.id, b.id))) return false;
-    uncertainTotal++;
-    return top.admits(score, ak, bk, a.id, b?.id ?? "");
+    total[into === top ? "members" : "accounts"]++;
+    return into.admits(score, ak, bk, a.id, b?.id ?? "");
   };
   const groupBy = (xs: MI[], keysOf: (x: MI) => string[]) => {
     const g = new Map<string, MI[]>();
@@ -385,11 +390,11 @@ export function mergeMemberRecords(input: MergeInput) {
     const ak = nameKey(aRef.name), k = nameKey(acc.name);
     const toks = k ? k.split(" ") : [];
     const label = acc.source.charAt(0).toUpperCase() + acc.source.slice(1);
-    const handle = () => { if (admit(0, ak, aRef, "", null)) top.add({ a: aRef, b: null, kind: "chat_handle", score: 0, reason: `${label} name '${acc.name || "(none)"}' does not identify anyone in the other sources; ask the manager who this is (not guessed).` }, ak, ""); };
+    const handle = () => { if (admit(0, ak, aRef, "", null, accountTop)) accountTop.add({ a: aRef, b: null, kind: "chat_handle", score: 0, reason: `${label} name '${acc.name || "(none)"}' does not identify anyone in the other sources; ask the manager who this is (not guessed).` }, ak, ""); };
     if (isPlaceholderName(k)) { handle(); continue; }
     const exact = byName.get(k) ?? [];
     if (exact.length === 1 && toks.length > 1 && toks[toks.length - 1].length > 1) {
-      if (admit(1, ak, aRef, exact[0].key, exact[0].ref)) top.add({ a: aRef, b: exact[0].ref, kind: "same_name_org_missing", score: 1, reason: `${label} display name matches ${exact[0].m.name} exactly, but the account has no email or organisation to confirm it.` }, ak, exact[0].key);
+      if (admit(1, ak, aRef, exact[0].key, exact[0].ref, accountTop)) accountTop.add({ a: aRef, b: exact[0].ref, kind: "same_name_org_missing", score: 1, reason: `${label} display name matches ${exact[0].m.name} exactly, but the account has no email or organisation to confirm it.` }, ak, exact[0].key);
       continue;
     }
     let cands: MI[] = exact;
@@ -401,13 +406,15 @@ export function mergeMemberRecords(input: MergeInput) {
       cands = pref.length >= 2 ? pref : [];
     }
     if (cands.length === 1) {
-      if (admit(0.7, ak, aRef, cands[0].key, cands[0].ref)) top.add({ a: aRef, b: cands[0].ref, kind: "chat_name_partial", score: 0.7, reason: `${label} name '${acc.name}' fits only ${cands[0].m.name}, but it is not a full name. Confirm before merging.` }, ak, cands[0].key);
+      if (admit(0.7, ak, aRef, cands[0].key, cands[0].ref, accountTop)) accountTop.add({ a: aRef, b: cands[0].ref, kind: "chat_name_partial", score: 0.7, reason: `${label} name '${acc.name}' fits only ${cands[0].m.name}, but it is not a full name. Confirm before merging.` }, ak, cands[0].key);
     } else if (cands.length > 1) {
       const five = cands.slice(0, 5);
-      for (const c of five) if (admit(0.5, ak, aRef, c.key, c.ref)) top.add({ a: aRef, b: c.ref, kind: "chat_name_ambiguous", score: 0.5, reason: `${label} name '${acc.name}' could be ${five.map((x) => x.m.name).join(" or ")}: ambiguous, not merged.` }, ak, c.key);
+      for (const c of five) if (admit(0.5, ak, aRef, c.key, c.ref, accountTop)) accountTop.add({ a: aRef, b: c.ref, kind: "chat_name_ambiguous", score: 0.5, reason: `${label} name '${acc.name}' could be ${five.map((x) => x.m.name).join(" or ")}: ambiguous, not merged.` }, ak, c.key);
     } else handle();
   }
-  const uncertain = top.result();
+  const memberRows = top.result(), accountRows = accountTop.result();
+  const uncertain = [...memberRows, ...accountRows].sort(TopMatches.compare).map((e) => e.u);
+  const accountsListed = new Set(accountRows.map((e) => e.u.a.id)).size;
 
   // ---- 6. stats, coverage, gaps ----
   const by_source: Record<string, number> = {};
@@ -456,8 +463,8 @@ export function mergeMemberRecords(input: MergeInput) {
   if (placeholderNamed) warnings.push(`${placeholderNamed} member(s) have a placeholder name (such as 'Unknown', 'Test' or initials only), so they were not matched by name; fix the names in the source.`);
   if (bigNameGroups) warnings.push(`${bigNameGroups} name(s) are shared by more than ${MAX_COMPARE_GROUP} members each and were not compared pair by pair (usually test or placeholder data).`);
   if (skippedBlocks) warnings.push(`${skippedBlocks} very large surname group(s) were not checked for similar names.`);
-  if (uncertainTotal > uncertain.length) warnings.push(`${uncertainTotal} uncertain matches were found; the ${uncertain.length} strongest are listed. Answer these (decisions), then merge again to see the rest.`);
-  if (accounts.length) warnings.push(`${accounts.length} chat account(s) have no email or organisation and did not match anyone for certain; they are listed in uncertain_matches and not counted as members.`);
+  if (total.members > memberRows.length) warnings.push(`${total.members} uncertain matches between members were found; the ${memberRows.length} strongest are listed. Answer these (decisions), then merge again to see the rest.`);
+  if (accounts.length) warnings.push(`${accounts.length} chat account(s) have no email or organisation and did not match anyone for certain, so they are not counted as members; ${accountsListed === accounts.length ? "each is listed in uncertain_matches" : `${accountsListed} of them are listed in uncertain_matches (the rest appear once these are answered)`}.`);
   if (describe_org_neutrally.length) warnings.push(`${describe_org_neutrally.length} organisation name(s) signal a sensitive attribute: describe them by sector only, and never infer anything about the person.`);
   const optedOut = members.filter((m) => m.opted_in === "no").length;
   if (optedOut) warnings.push(`${optedOut} member(s) opted out: no outreach, and they are left out of the gap plan.`);
@@ -467,7 +474,7 @@ export function mergeMemberRecords(input: MergeInput) {
     uncertain_matches: uncertain,
     stats: {
       input_records: recs.length, unique_members: n, merged: recordsInMembers - n, unresolved_accounts: accounts.length,
-      merged_by_exact_name: exactMerged.length, uncertain_total: uncertainTotal, uncertain_listed: uncertain.length, by_source, coverage,
+      merged_by_exact_name: exactMerged.length, uncertain_total: total.members + total.accounts, uncertain_listed: uncertain.length, by_source, coverage,
     },
     gaps,
     same_organisation,

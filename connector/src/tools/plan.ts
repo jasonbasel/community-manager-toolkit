@@ -12,6 +12,7 @@
  * written after the spacing and opt-out check: it never names someone who opted out, and its
  * prompt lists only the people still in it.
  */
+import { AMBIGUOUS_NAME_WORDS } from "../data/people.js";
 import { addDays, cmp, daysBetween, isPlaceholderName, nameKey, parseDate, parseInstant, plain } from "../text/normalise.js";
 import { InputError } from "./errors.js";
 import { nextAllowed, optInValue } from "./segment.js";
@@ -39,20 +40,39 @@ export interface PlanItem {
 /** Opt-outs of messages (guardrails §12): no more proactive touches, whoever relays them. */
 const OPT_OUT_RE = new RegExp([
   String.raw`\bopt(?:ed|s|ing)?[- ]?out\b`, String.raw`\bunsubscrib\w*`, String.raw`\bdnc\b`,
-  String.raw`\b(?:do not|don't|dont|never) (?:contact|message|email|e-mail|call|text|approach)\b`,
+  String.raw`\b(?:do not|don't|dont|never)(?: ever| again)? (?:contact|message|email|e-mail|call|text|approach|introduce)\w*`,
   String.raw`\bno (?:more|further) (?:contact|messages|emails|intros?|introductions|outreach)\b`,
-  String.raw`\bstop(?:ped)? (?:messag|contact|email|text)\w*`, String.raw`\bnot to (?:be contacted|be messaged|receive)\b`,
+  String.raw`\bstop(?:ped)? (?:messag|contact|email|text)\w*`, String.raw`\bnot to (?:be contacted|be messaged|receive|contact|message|email)\b`,
   String.raw`\bremove[ds]? (?:them |him |her |me )?from\b`, String.raw`\basked to be removed\b`,
   String.raw`\bwithdr[ae]w\w* (?:their |his |her |my )?consent\b`, String.raw`\bconsent (?:was )?withdrawn\b`,
-  String.raw`\bdelete (?:my|their|his|her|all (?:my|their|his|her)) (?:data|details|information|info|account|profile|record)s?\b`,
-  String.raw`\berase (?:my|their|his|her|all)\b`, String.raw`\berasure\b`,
-  String.raw`\b(?:right to be|wants? to be|asked to be|asks to be) forgotten\b`, String.raw`\bforget (?:me|them|him|her)\b`,
-].join("|"), "i");
+  // erasure of the person (not just of something they said)
+  String.raw`\b(?:delete|erase|remove)\w* (?:all )?(?:my|their|his|her) (?:personal )?(?:data|account|profile|records?|contact details|personal details|personal information)\b`,
+  String.raw`\berasure\b`, String.raw`\b(?:right to be|wants? to be|asked to be|asks to be) forgotten\b`,
+  String.raw`\bforget (?:me|them|him|her)\b(?! (?:notes?|details|information|info|comments?|story|data|project|startup|company|idea|plans?)\b)`,
+].join("|"), "gi");
 /** Removal of information (guardrails §12): stop using it and record only the category. Not an opt-out on its own. */
-const REMOVAL_RE = /\b(?:removal|remove (?:the|this|that|their|his|her|my|all|what)\b|delete (?:the|this|that|what)\b|forget|forgotten|(?:do not|don't|dont) (?:use|share|repeat|mention)\b|stop using\b|not to be (?:used|shared|repeated|mentioned)\b)/i;
+const REMOVAL_RE = new RegExp([
+  String.raw`\bremoval\b`, String.raw`\bredact\w*`, String.raw`\bforget(?:ting)?\b`, String.raw`\bforgotten\b`, String.raw`\b(?:remove|delete|erase|forget) what\b`,
+  // delete, erase or remove personal notes, details, data or information
+  String.raw`\b(?:remove|delete|erase)(?:s|d|ed|ing)?\b(?: \w+){0,4}? (?:notes?|details|information|info|comments?|story|stories|data|records?|messages?|quotes?|answers?|bio)\b`,
+  String.raw`\b(?:do not|don't|dont) (?:use|share|repeat|mention)\b`, String.raw`\bstop using\b`, String.raw`\bnot to be (?:used|shared|repeated|mentioned)\b`,
+].join("|"), "gi");
+/** A negation shortly before a phrase cancels it ("don't forget her", "did not opt out"); phrases that are negations themselves stand. */
+const NEGATIONS = new Set(["not", "no", "never", "dont", "didnt", "doesnt", "wont", "cant", "cannot", "isnt", "wasnt", "arent", "werent", "hasnt", "havent", "hadnt", "shouldnt", "wouldnt", "nor", "without"]);
+const SELF_NEGATED = /^(?:do not|don't|dont|never|not|no)\b/i;
+function hasPhrase(note: string, re: RegExp): boolean {
+  re.lastIndex = 0;
+  for (const m of note.matchAll(re)) {
+    if (SELF_NEGATED.test(m[0])) return true;
+    const clause = note.slice(Math.max(0, m.index - 60), m.index).split(/[.;:!?,\n]/).pop() ?? "";
+    const before = clause.toLowerCase().replace(/'/g, "").split(/[^a-z]+/).filter(Boolean).slice(-3);
+    if (!before.some((w) => NEGATIONS.has(w))) return true;
+  }
+  return false;
+}
 const ACTIONED_RE = /\b(honou?red|actioned|done|processed|completed)\b/i;
-const REQUESTER_WORD = /\b(?:requester|requestor|seeker|asker)\b/i;
-const TARGET_WORD = /\b(?:target|introductee)\b/i;
+const REQUESTER_WORD = /\b(?:request(?:er|or)s?|seekers?|askers?)\b/;
+const TARGET_WORD = /\b(?:targets?|introduc(?:t)?ees?)\b/;
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const nice = (iso: string) => { const d = new Date(iso + "T00:00:00Z"); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)}`; };
@@ -113,21 +133,32 @@ class People {
   label(k: string): string { return this.best.get(this.find(k))?.label ?? k; }
 }
 
-/** Whether a note names this person: their full name, or a name word the other person doesn't share. */
-function mentions(note: string, who: string, other: string): boolean {
-  const k = nameKey(who);
-  if (!k) return false;
-  const text = ` ${plain(note)} `;
-  if (text.includes(` ${k} `)) return true;
-  const theirs = new Set(nameKey(other).split(" "));
-  return k.split(" ").some((t) => t.length >= 3 && !theirs.has(t) && text.includes(` ${t} `));
+const ambiguousWords = new Set(AMBIGUOUS_NAME_WORDS);
+const distinctive = (t: string) => t.length >= 2 && !ambiguousWords.has(t);
+/** A note's words with apostrophes dropped first ("don't" → "dont", never "don"), padded for whole-word search. */
+const noteWords = (note: string) => ` ${plain(note.replace(/['’‘`]/g, ""))} `;
+/** Named strongly enough to attribute an opt-out: the full name or the surname; a one-word name only if it isn't an ordinary word, month or weekday. */
+function namedIn(text: string, who: string): boolean {
+  const toks = nameKey(who).split(" ").filter(Boolean);
+  const has = (p: string) => text.includes(` ${p} `);
+  if (toks.length < 2) return toks.length === 1 && distinctive(toks[0]) && has(toks[0]);
+  if (has(toks.join(" "))) return true;
+  const last = toks[toks.length - 1];
+  return (toks.length > 2 && has(toks.slice(1).join(" "))) || (distinctive(last) && has(last));
 }
-/** Which side of an intro an opt-out note is about: an explicit role word first, then a name; both when the note doesn't say. */
+/** Any word of the person's name in the note, even a bare first name or an ordinary word: enough to make the note unclear. */
+const touchedIn = (text: string, who: string) => nameKey(who).split(" ").some((t) => t.length >= 2 && text.includes(` ${t} `));
+/**
+ * Which side of an intro an opt-out note is about: a role word ("requester", "target"), else one person's full name or
+ * surname with no word of the other person's name in the note. Anything else holds both people.
+ */
 function optOutParty(note: string, r: PlanLedgerRow): "requester" | "target" | "both" {
-  const roleR = REQUESTER_WORD.test(note), roleT = TARGET_WORD.test(note);
+  const text = noteWords(note);
+  const roleR = REQUESTER_WORD.test(text), roleT = TARGET_WORD.test(text);
   if (roleR !== roleT) return roleR ? "requester" : "target";
-  const nameR = mentions(note, r.requester!, r.target!), nameT = mentions(note, r.target!, r.requester!);
-  if (nameR !== nameT) return nameR ? "requester" : "target";
+  const strongR = namedIn(text, r.requester!), strongT = namedIn(text, r.target!);
+  if (strongR && !strongT && !touchedIn(text, r.target!)) return "requester";
+  if (strongT && !strongR && !touchedIn(text, r.requester!)) return "target";
   return "both";
 }
 
@@ -172,8 +203,8 @@ export function planWeek(input: PlanInput) {
   const removals: PlanLedgerRow[] = [];
   for (const { r, req, tgt } of rows) {
     const n = String(r.notes ?? "").replace(/[’‘`]/g, "'");
-    const optOut = OPT_OUT_RE.test(n);
-    if (!optOut && !REMOVAL_RE.test(n)) continue;
+    const optOut = hasPhrase(n, OPT_OUT_RE);
+    if (!optOut && !hasPhrase(n, REMOVAL_RE)) continue;
     if (!ACTIONED_RE.test(n)) removals.push(r);
     if (!optOut) continue; // removal of information: stop using it, but the person can still be contacted
     const where = `ledger ${r.intro_id ?? "row"}`;
@@ -189,7 +220,13 @@ export function planWeek(input: PlanInput) {
 
   // ---- existing touches (instants) ----
   const touches = new Map<string, number[]>();
-  const addTouch = (root: string, d: string | null) => { if (!d) return; const t = parseInstant(d); if (t === null) return; const k = R(root); touches.set(k, [...(touches.get(k) ?? []), t]); };
+  const addTouch = (root: string, d: string | null) => {
+    if (!d) return;
+    const t = parseInstant(d), k = R(root);
+    if (t === null) return;
+    const ts = touches.get(k);
+    if (ts) ts.push(t); else touches.set(k, [t]);
+  };
   for (const { r, req, tgt } of rows) {
     addTouch(tgt, D(r.asked_on));
     if (D(r.connected_on)) { addTouch(req, D(r.connected_on)); addTouch(tgt, D(r.connected_on)); }
@@ -212,7 +249,20 @@ export function planWeek(input: PlanInput) {
   type Row = (typeof rows)[number];
   const ids = (rs: Row[]) => rs.map(({ r }) => r.intro_id ?? "").filter(Boolean);
   const refs = (rs: Row[], each: (x: Row) => string) => (rs.every(({ r }) => r.intro_id) ? ids(rs).join(", ") : rs.map(each).join("; "));
-  const introsOf = (rs: Row[], sides: ("req" | "tgt")[]) => (root: string) => ids(rs.filter((x) => sides.some((s) => R(x[s]) === R(root))));
+  /** Intro ids per person, built once per candidate on first use (a held person's lookup is then O(1)). */
+  const introsOf = (rs: Row[], sides: ("req" | "tgt")[]) => {
+    let byRoot: Map<string, string[]> | null = null;
+    return (root: string) => {
+      if (!byRoot) {
+        byRoot = new Map();
+        for (const x of rs) {
+          if (!x.r.intro_id) continue;
+          for (const k of new Set(sides.map((s) => R(x[s])))) { const xs = byRoot.get(k); if (xs) xs.push(x.r.intro_id); else byRoot.set(k, [x.r.intro_id]); }
+        }
+      }
+      return byRoot.get(R(root)) ?? [];
+    };
+  };
   /** "Requester → Target", leaving out anyone who opted out (they are never named in an item). */
   const pairText = (x: Row) => [x.r.requester!, x.r.target!].filter((_p, k) => !isOut(k ? x.tgt : x.req)).join(" → ") || "an intro";
 
@@ -363,9 +413,10 @@ export function planWeek(input: PlanInput) {
   // ---- spacing across the plan ----
   const spacing_conflicts: { person: string; kept: string; moved: string; to: string; resolution: string }[] = [];
   const held: { type: "touch" | "item"; person?: string; item: string; until?: string; reason: string; intro_ids?: string[] }[] = [];
-  const plannedAt = new Map<string, { at: number; kind: string }[]>();
+  const plannedAt = new Map<string, { at: number; cand: Cand }[]>();
   const horizonEnd = Date.parse(addDays(today, 6) + "T00:00:00Z");
-  const titleOf = new Map(cands.map((c) => [c.kind, c.render(() => true)?.title ?? c.kind]));
+  // Titles per candidate, not per kind: two invite-only events are two different items.
+  const titleOf = new Map(cands.map((c) => [c, c.render(() => true)?.title ?? c.kind]));
   const keptBy = new Map<Cand, Set<string>>();
   // Touches tied to a dated event are placed first, then the rest in priority order.
   const touchOrder = [...cands].filter((c) => c.touch).sort((a, b) => (a.deadline ? 0 : 1) - (b.deadline ? 0 : 1) || a.priority - b.priority);
@@ -383,17 +434,18 @@ export function planWeek(input: PlanInput) {
       const nx = nextAllowed(prior.filter((x) => x <= want), o.spacing_days, o.min_gap_hours);
       const clashFuture = prior.filter((x) => x > want && x - want <= o.spacing_days * 86_400_000);
       const at = nx !== null && nx > want ? nx : want;
-      if (at === want && !clashFuture.length) { keep.add(k); plannedAt.set(k, [...(plannedAt.get(k) ?? []), { at, kind: c.kind }]); continue; }
+      if (at === want && !clashFuture.length) { keep.add(k); plannedAt.set(k, [...(plannedAt.get(k) ?? []), { at, cand: c }]); continue; }
       const moveTo = clashFuture.length ? nextAllowed(clashFuture, o.spacing_days, o.min_gap_hours)! : at;
       const to = new Date(moveTo).toISOString().slice(0, 10);
-      const keptKind = (plannedAt.get(k) ?? []).find((x) => Math.abs(x.at - want) <= (o.spacing_days + 1) * 86_400_000)?.kind ?? "an earlier touch";
+      const keptCand = (plannedAt.get(k) ?? []).find((x) => Math.abs(x.at - want) <= (o.spacing_days + 1) * 86_400_000)?.cand;
+      const keptKind = keptCand?.kind ?? "an earlier touch";
       const lateForEvent = c.deadline && to > c.deadline;
       const resolution = lateForEvent
-        ? `kept ${titleOf.get(keptKind) ?? keptKind}; this touch would land after ${c.deadline}, so fold it into that message or skip it`
+        ? `kept ${keptCand ? titleOf.get(keptCand) : keptKind}; this touch would land after ${c.deadline}, so fold it into that message or skip it`
         : `moved to ${nice(to)} (${o.spacing_days}-day spacing)`;
       spacing_conflicts.push({ person: label(k), kept: keptKind, moved: c.kind, to, resolution });
       held.push({ type: "touch", person: label(k), item: c.kind, until: to, reason: resolution, ...traced(k) });
-      if (moveTo <= horizonEnd && !lateForEvent) plannedAt.set(k, [...(plannedAt.get(k) ?? []), { at: moveTo, kind: c.kind }]);
+      if (moveTo <= horizonEnd && !lateForEvent) plannedAt.set(k, [...(plannedAt.get(k) ?? []), { at: moveTo, cand: c }]);
     }
     keptBy.set(c, keep);
   }
@@ -404,7 +456,7 @@ export function planWeek(input: PlanInput) {
     const keep = keptBy.get(c);
     const isKept = (root: string) => (keep ? keep.has(R(root)) : true);
     const text = c.render(isKept);
-    if (!text) { held.push({ type: "item", item: titleOf.get(c.kind) ?? c.kind, reason: "every person in it was moved by the spacing rule or has opted out" }); continue; }
+    if (!text) { held.push({ type: "item", item: titleOf.get(c) ?? c.kind, reason: "every person in it was moved by the spacing rule or has opted out" }); continue; }
     const names = keep ? [...new Map(c.recipients.filter((p) => isKept(p.root)).map((p) => [R(p.root), p.label])).values()] : [];
     kept.push({ c, item: { priority: c.priority, kind: c.kind, title: text.title, why_now: text.why_now, people: names, due: c.due, suggested_prompt: text.suggested_prompt, ...(text.intro_ids ? { intro_ids: text.intro_ids } : {}) } });
   }

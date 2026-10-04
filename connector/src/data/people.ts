@@ -54,3 +54,19 @@ export const NICKNAME_GROUPS: readonly (readonly string[])[] = [
   ["frank", "francis", "frances", "fran", "frankie"], ["gabe", "gabriel", "gabriella", "gabby"], ["izzy", "isabel", "isabella", "isobel"],
   ["toby", "tobi", "tobias"], ["leo", "leopold", "leonard", "leon"], ["thandi", "thandiwe"], ["mo", "mohammed", "muhammad", "mohamed"],
 ];
+
+/**
+ * Name words that are also ordinary words, months or weekdays. A note's "3 June", "will" or "May"
+ * never identifies a person on its own (plan_week holds both people when a note is unclear).
+ */
+export const AMBIGUOUS_NAME_WORDS: readonly string[] = [
+  "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
+  "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec",
+  "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "mon", "tue", "tues", "wed", "thu", "thur", "thurs", "fri", "sat", "sun",
+  "day", "today", "tomorrow", "week", "night", "morning", "evening", "noon", "spring", "summer", "autumn", "winter",
+  "will", "can", "shall", "must", "might", "don", "art", "bill", "mark", "rose", "grace", "hope", "joy", "faith", "dawn", "eve", "frank", "pat",
+  "ray", "rich", "sue", "guy", "chase", "chance", "dean", "earl", "jack", "max", "sky", "sunny", "star", "storm", "river", "rain", "page",
+  "case", "wade", "cliff", "glen", "dale", "lane", "brook", "ford", "hill", "wood", "field", "stone", "king", "young", "long", "little",
+  "white", "black", "green", "brown", "grey", "gray", "best", "love", "bell", "hall", "wall", "fox", "hunt", "banks", "price", "cook",
+  "baker", "mason", "hunter", "park", "moon", "song", "north", "south", "east", "west", "well", "more", "most", "new", "good", "hart",
+];

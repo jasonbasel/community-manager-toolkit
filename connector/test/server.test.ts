@@ -188,6 +188,22 @@ describe("access log fields (review finding 6)", () => {
   });
 });
 
+describe("error log (round-2 8)", () => {
+  it("logs an unknown path as other when a request fails", async () => {
+    class Exploding extends Map<string, never> { override get(_k: string): never { throw new Error("boom"); } }
+    const failing = createApp({ rateLimitPerMin: 100, site: new Exploding() });
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "error").mockImplementation((line: string) => { lines.push(String(line)); });
+    const prev = CONFIG.logging;
+    (CONFIG as { logging: boolean }).logging = true;
+    try {
+      expect((await failing.request("/members/zebedee.quarrington@example.com")).status).toBe(500);
+    } finally { (CONFIG as { logging: boolean }).logging = prev; spy.mockRestore(); }
+    expect(lines.join("\n")).toMatch(/"event":"http_error","path":"other"/);
+    expect(lines.join("\n")).not.toMatch(/zebedee|example\.com/i);
+  });
+});
+
 describe("MCP over Streamable HTTP", () => {
   let client: Client;
   const logged: string[] = [];

@@ -163,6 +163,19 @@ export const CONTACT_PATTERNS: readonly RegExp[] = [
 /** Header patterns for sensitive personal data: listed in sensitive_columns and never used. */
 export const SENSITIVE_COLUMN_PATTERNS: readonly RegExp[] = [
   /\b(gender|sex|pronouns|ethnicity|ethnic|race|religion|religious|faith|sexual orientation|sexuality|disability|disabilities|accessibility|access needs|dietary|diet|allergies|allergy|medical|health conditions?|date of birth|dob|birthday|birth date|age|nationality|marital|pregnan\w*|caste|political)\b/,
+  // Stems that reveal a sensitive attribute wherever they appear in a header ("Health status", "Relationship status", "Pregnancy").
+  /(?:health|medical|medicat|diagnos|relationship|marital|married|religio|ethnic|racial|sexual|disab|pregnan|maternity|impairment|politic)/,
+];
+
+/** Words that show a row is a header row (a first row with none of them, made of names and organisations, is data). */
+export const HEADER_WORDS: readonly string[] = [
+  "name", "names", "first", "last", "full", "given", "surname", "email", "mail", "company", "organisation", "organization", "org", "employer",
+  "title", "role", "job", "position", "city", "location", "country", "region", "state", "phone", "mobile", "date", "joined", "created", "updated",
+  "modified", "status", "id", "tags", "tag", "notes", "note", "bio", "consent", "subscribed", "source", "type", "website", "url", "address",
+  "postcode", "zip", "timezone", "industry", "sector", "interests", "asks", "offers", "owner", "lead", "stage", "score", "number", "amount",
+  "total", "time", "year", "month", "team", "group", "level", "plan", "account", "contact", "member", "members", "event", "ticket", "order",
+  "registered", "attendee", "guest", "approval", "checked", "response", "submitted", "timestamp", "label", "category", "description",
+  "comments", "feedback", "rating", "count", "budget", "manager", "department", "segment", "cohort",
 ];
 
 /** Header patterns that look like activity but are not (email engagement). */

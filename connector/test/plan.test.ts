@@ -94,21 +94,33 @@ describe("spacing across the plan", () => {
 
 const textOf = (o: ReturnType<typeof planWeek>) => o.items.map((i) => [i.title, i.why_now, i.suggested_prompt, ...i.people].join(" | ")).join("\n");
 
-describe("who opted out (review finding 3a)", () => {
-  const row = (notes: string) => ({ intro_id: "r1", requester: "Odalys Fenwick", target: "Saoirse Delacroix-Burke", status: "withdrawn", notes });
-  const out = (notes: string) => { const o = planWeek({ ...base, ledger: [row(notes)], new_members: [{ name: "Odalys Fenwick", joined: "2026-09-20" }, { name: "Saoirse Delacroix-Burke", joined: "2026-09-21" }] }); return o.items.find((i) => i.kind === "welcomes")?.people ?? []; };
-  it("marks the requester when the note names the requester", () => {
-    expect(out("Odalys asked us to stop messaging her; opted out")).toEqual(["Saoirse Delacroix-Burke"]);
+describe("who opted out (review findings 3a and round-2 1)", () => {
+  const welcomed = (requester: string, target: string, notes: string) => {
+    const o = planWeek({ ...base, ledger: [{ intro_id: "r1", requester, target, status: "withdrawn", notes }], new_members: [{ name: requester, joined: "2026-09-20" }, { name: target, joined: "2026-09-21" }] });
+    return o.items.find((i) => i.kind === "welcomes")?.people ?? [];
+  };
+  const out = (notes: string) => welcomed("Odalys Fenwick", "Saoirse Delacroix-Burke", notes);
+  it("attributes to one side from a role word, a full name or a surname", () => {
     expect(out("Requester opted out")).toEqual(["Saoirse Delacroix-Burke"]);
-  });
-  it("marks the target when the note names the target", () => {
-    expect(out("Saoirse said do not contact again")).toEqual(["Odalys Fenwick"]);
+    expect(out("The requester's request: no more intros")).toEqual(["Saoirse Delacroix-Burke"]);
+    expect(out("Odalys Fenwick asked us to stop messaging her; opted out")).toEqual(["Saoirse Delacroix-Burke"]);
+    expect(out("Fenwick: do not contact again")).toEqual(["Saoirse Delacroix-Burke"]);
     expect(out("Target unsubscribed")).toEqual(["Odalys Fenwick"]);
+    expect(out("Introducee opted out")).toEqual(["Odalys Fenwick"]);
+    expect(out("Delacroix-Burke said don't contact again")).toEqual(["Odalys Fenwick"]);
+    expect(out("Burke opted out")).toEqual(["Odalys Fenwick"]);
   });
-  it("holds both people when the note doesn't say who", () => {
-    const o = planWeek({ ...base, ledger: [row("DNC")], new_members: [{ name: "Odalys Fenwick", joined: "2026-09-20" }, { name: "Saoirse Delacroix-Burke", joined: "2026-09-21" }] });
-    expect(o.items.find((i) => i.kind === "welcomes")).toBeUndefined();
-    expect(o.held.filter((h) => h.type === "touch").map((h) => h.reason)).toEqual([expect.stringMatching(/doesn't say who/), expect.stringMatching(/doesn't say who/)]);
+  it("holds both people when the note is unclear", () => {
+    for (const n of ["DNC", "Odalys asked us to stop messaging her; opted out", "Saoirse said do not contact again", "Fenwick told Saoirse she had opted out"]) expect(out(n), n).toEqual([]);
+    const o = planWeek({ ...base, ledger: [{ intro_id: "r1", requester: "Odalys Fenwick", target: "Saoirse Delacroix-Burke", status: "withdrawn", notes: "DNC" }] });
+    expect(o.stats.opted_out).toBe(2);
+  });
+  it("never attributes from a name that is also a date or an ordinary word", () => {
+    expect(welcomed("June Ellis", "Bo Chan", "Opted out 3 June")).toEqual([]);
+    expect(welcomed("Will Hart", "Bo Chan", "Opted out; will not take intros")).toEqual([]);
+    expect(welcomed("May Ross", "Ann Park", "Opted out in May")).toEqual([]);
+    expect(welcomed("Don Ellis", "Bo Chan", "Bo Chan said don't contact her again")).toEqual(["Don Ellis"]);
+    expect(welcomed("Bo", "Ann Park", "Bo opted out")).toEqual(["Ann Park"]);
   });
 });
 
@@ -128,6 +140,18 @@ describe("opt-out and removal phrasing (review finding 3b)", () => {
       expect(optedOut(n), n).toBe(false);
     }
     expect(kinds(plan("2026-09-30 removal request: project details, do not use; honoured 2026-10-01"))).not.toContain("removal_requests");
+  });
+  it("ignores phrases cancelled by a negation just before them, and catches delete, erase and redact (round-2 3)", () => {
+    for (const n of ["Don't forget her for the dinner", "Bo did not opt out", "Bo never unsubscribed", "Please do not remove her from the list", "Bo hasn't opted out yet"]) {
+      expect(optedOut(n), n).toBe(false);
+      expect(kinds(plan(n)), n).not.toContain("removal_requests");
+    }
+    expect(optedOut("Don't email her again: she opted out")).toBe(true);
+    for (const n of ["Bo asked us to delete her notes", "erase the project details", "redact the fundraising figures", "Bo: please delete the comments about her startup"]) {
+      expect(kinds(plan(n))[0], n).toBe("removal_requests");
+      expect(optedOut(n), n).toBe(false);
+    }
+    expect(optedOut("Bo asked us to delete her data")).toBe(true);
   });
   it("does not read ordinary notes as opt-outs", () => {
     for (const n of ["Both said yes; requester did not send the first message", "Declined: no capacity this quarter", "No reply after 4 days; lapse notice sent", "Morning-after follow-up unanswered", "Queued, not yet sent"]) {
@@ -197,5 +221,30 @@ describe("item text written after the spacing and opt-out check (review finding 
     const o = planWeek({ ...base, ledger: [{ intro_id: "p1", requester: "Raphael", target: "Henrietta", status: "proposed", created: "2026-09-10" }], segments: [{ id: "Raphael", segment: "dark", opted_in: "no" }] });
     expect(o.items.find((i) => i.kind === "unsent_asks")).toBeUndefined();
     expect(o.held).toEqual(expect.arrayContaining([expect.objectContaining({ item: "consent ask for intro p1", reason: expect.stringMatching(/requester opted out/) })]));
+  });
+});
+
+describe("scale (round-2 2)", () => {
+  it("5,000 accepted intros noted DNC (10,000 people held) plan in well under 1 s", () => {
+    const ledger = Array.from({ length: 5000 }, (_v, i) => ({ intro_id: `i${i}`, requester: `Asker${i} Person`, target: `Target${i} Person`, status: "accepted", answered_on: "2026-08-01", notes: "DNC" }));
+    const t0 = performance.now();
+    const o = planWeek({ ...base, ledger });
+    expect(performance.now() - t0).toBeLessThan(1000);
+    expect(o.stats.opted_out).toBe(10000);
+    expect(o.items.find((i) => i.kind === "checks_due")).toBeUndefined();
+    expect(o.held.filter((h) => h.type === "touch")).toHaveLength(10000);
+    expect(o.held.find((h) => h.person === "Target4999 Person")?.intro_ids).toEqual(["i4999"]);
+  });
+});
+
+describe("two invite-only events (round-2 6)", () => {
+  it("names the event that kept the slot, not the other one", () => {
+    const o = planWeek({ ...base, events: [
+      { name: "Alpha Supper", starts_at: "2026-10-09", invitations_sent: false, people: ["Priya", "Kasper"] },
+      { name: "Beta Breakfast", starts_at: "2026-10-12", invitations_sent: false, people: ["Priya"] },
+    ] });
+    expect(o.spacing_conflicts).toEqual([expect.objectContaining({ person: "Priya", kept: "event_invitations", moved: "event_invitations" })]);
+    expect(o.spacing_conflicts[0].resolution).toMatch(/^kept Send the Alpha Supper invitations \(2 invitees\); this touch would land after 2026-10-09/);
+    expect(o.held.find((h) => h.type === "item")?.item).toBe("Send the Beta Breakfast invitations (1 invitee)");
   });
 });

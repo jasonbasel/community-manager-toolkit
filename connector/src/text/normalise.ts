@@ -1,6 +1,6 @@
 /** Text normalisation shared by every tool. Pure functions; no I/O. */
 import { DISPLAY_SUFFIXES, MATCH_PREFIXES, MATCH_SUFFIXES } from "../data/organisations.js";
-import { BARE_COUNTRY_CODES, PHONE_ID_SOURCES, PLACEHOLDER_NAMES, PLACEHOLDER_TOKENS } from "../data/contacts.js";
+import { BARE_COUNTRY_CODES, HANDLE_ID_LABELS, HANDLE_ID_WORDS, PHONE_ID_LABELS, PHONE_ID_WORDS, PLACEHOLDER_NAMES, PLACEHOLDER_TOKENS } from "../data/contacts.js";
 import { DOMAIN_ALIASES, DOTLESS_DOMAINS, PERSONAL_EMAIL_DOMAINS, ROLE_LOCAL_PARTS } from "../data/email-domains.js";
 import { SENSITIVE_TERMS } from "../data/sensitive-terms.js";
 import { NICKNAME_GROUPS } from "../data/people.js";
@@ -172,23 +172,36 @@ export function isUrlLike(s: string): boolean {
 }
 
 export type ContactKind = "email" | "phone" | "link" | "handle";
-const phoneSources = new Set(PHONE_ID_SOURCES);
-const isPhoneSource = (source: string | undefined) => !!source && fold(source).split(/[^a-z0-9]+/).some((w) => phoneSources.has(w));
+const phoneWords = new Set(PHONE_ID_WORDS), phoneLabels = new Set(PHONE_ID_LABELS), handleWords = new Set(HANDLE_ID_WORDS), handleLabels = new Set(HANDLE_ID_LABELS);
+const labelWords = (label: string) => fold(label).split(/[^a-z0-9]+/).filter(Boolean);
+const wholeLabel = (label: string) => fold(label).replace(/[^a-z0-9]/g, "");
+/** A source name or ID prefix whose IDs are phone numbers: WhatsApp, SMS, msisdn; "wa", "tel", "mobile" only as the whole label. */
+export const isPhoneLabel = (label: string): boolean => labelWords(label).some((w) => phoneWords.has(w)) || phoneLabels.has(wholeLabel(label));
+/** A source name or ID prefix whose values are social handles or profile slugs: LinkedIn, Telegram, Instagram; "x" only as the whole label. */
+export const isHandleLabel = (label: string): boolean => labelWords(label).some((w) => handleWords.has(w)) || handleLabels.has(wholeLabel(label));
 
 /**
  * Whether an identifier (source ID, guest ID, member ID) is really a contact detail. Stricter than
  * free-text scanning about bare numbers, which are usually platform IDs (HubSpot, Discord), unless
- * the source identifies people by phone number (WhatsApp, SMS …) or the number has a trunk 0.
+ * a label says the ID is a phone number (WhatsApp, SMS, tel:) or the number has a trunk 0. With
+ * `handles`, an "@handle", any value under a phone label, and any value under a social label
+ * (LinkedIn, Telegram, X …) other than an opaque numeric ID or URN are contact details too.
  */
-export function idContactKind(value: string, opts: { source?: string; handles?: boolean } = {}): ContactKind | null {
+export function idContactKind(value: string, opts: { labels?: readonly string[]; handles?: boolean } = {}): ContactKind | null {
   const v = value.trim();
   if (!v) return null;
   if (isEmailLike(v)) return "email";
   if (isUrlLike(v)) return "link";
-  if (opts.handles && /^@[\w.]/.test(v)) return "handle";
+  const labels = opts.labels ?? [];
   const digits = digitCount(v);
+  const phoneLabel = labels.some(isPhoneLabel);
+  if (opts.handles) {
+    if (/^@[\w.]/.test(v)) return "handle";
+    if (phoneLabel) return digits >= 5 ? "phone" : "handle";
+    if (labels.some(isHandleLabel) && !/^\d{5,20}$/.test(v) && !/^urn:[a-z0-9-]+:/i.test(v)) return "handle";
+  }
   const phoneChars = /^[+\d\s().-]+$/.test(v);
-  if (phoneChars && digits >= 7 && digits <= 15 && isPhoneSource(opts.source)) return "phone";
+  if (phoneChars && digits >= 7 && digits <= 15 && phoneLabel) return "phone";
   if (/^\d+$/.test(v)) return /^0[1-9]/.test(v) && digits >= 9 && digits <= 15 ? "phone" : null;
   if (phoneChars && /^(?:\+|\(|0[1-9])/.test(v) && digits >= 9 && digits <= 15) return "phone";
   return isPhoneLike(v) ? "phone" : null;

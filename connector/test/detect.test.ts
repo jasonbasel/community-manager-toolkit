@@ -171,3 +171,26 @@ describe("values and header rows that must never be echoed (review finding 12)",
     expect(d("jane.doe@example.com", ["Name"]).source_name).not.toMatch(/example/);
   });
 });
+
+describe("values, sensitive headers and name rows (round-2 5)", () => {
+  it("returns only consent and status words, counting the rest", () => {
+    const o = d("x.csv", ["Name", "Status", "Consent"], [["A", "Active", "Subscribed"], ["B", "On sabbatical in Lisbon", "Told me on the phone in March"], ["C", "Pregnant", "yes"]]);
+    const s = JSON.stringify(o);
+    for (const leak of ["Lisbon", "Pregnant", "March", "phone"]) expect(s, leak).not.toContain(leak);
+    expect(o.mapping.find((m) => m.field === "status")).toMatchObject({ values: { Active: "member" }, unlisted_values: 2 });
+    expect(o.mapping.find((m) => m.field === "opted_in")).toMatchObject({ values: { Subscribed: "yes", yes: "yes" }, unlisted_values: 1 });
+    expect(o.warnings.join(" ")).toMatch(/'Status' has 2 sample value\(s\) that are not consent or status words/);
+  });
+  it("treats any header naming health, relationships, religion, ethnicity, sexuality, disability or pregnancy as sensitive", () => {
+    const headers = ["Name", "Health status", "Relationship status", "Religious community", "Ethnic background", "Sexual orientation", "Disability support", "Pregnancy", "Medical notes", "Marital"];
+    const o = d("x.csv", headers, [["A", "Diabetic", "Divorced", "Parish", "Irish", "Gay", "Wheelchair", "Pregnant", "Asthma", "Married"]]);
+    expect(o.sensitive_columns.map((c) => c.column)).toEqual(headers.slice(1));
+    expect(JSON.stringify(o)).not.toMatch(/Diabetic|Divorced|Parish|Irish|Gay|Wheelchair|Pregnant|Asthma|Married/);
+  });
+  it("masks a first row of names and organisations that has nothing reading as a column name", () => {
+    const o = d("export.csv", ["Jane Doe", "Acme Ltd", "CEO", "London"], [["Bo Chan", "Globex Inc", "CTO", "Leeds"]]);
+    expect(JSON.stringify(o)).not.toMatch(/Jane|Doe|Acme|London|Bo Chan|Globex|Leeds/);
+    expect(o.warnings.join(" ")).toMatch(/no header row/);
+    for (const headers of [["Project Lead", "Budget Owner", "Kick Off"], ["Cohort", "Mentor", "Pod"], ["Full Name", "Acme Ltd"]]) expect(d("x.csv", headers).warnings.join(" "), headers.join()).not.toMatch(/no header row/);
+  });
+});

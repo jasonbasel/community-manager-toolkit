@@ -150,7 +150,8 @@ describe("phone numbers (review finding 9)", () => {
     for (const id of ["415-555-0100", "(415) 555-0100", "+44 7700 900123", "07700900123", "44 7700 900123", "wa.me/447700900123", "jane@example.com", "https://linkedin.com/in/jane", "linkedin.com/in/jane"])
       expect(idContactKind(id), id).not.toBeNull();
     for (const id of ["4155550100", "51203400243", "113693792436467651", "U0ABC123", "2026-09-30", "gst-4155550100", "Sam Patel", "m_abcdefghij"]) expect(idContactKind(id), id).toBeNull();
-    expect(idContactKind("447700900123", { source: "whatsapp" })).toBe("phone");
+    expect(idContactKind("447700900123", { labels: ["whatsapp"] })).toBe("phone");
+    expect(idContactKind("447700900123", { labels: ["mobile-app"] })).toBeNull();
     expect(idContactKind("@jane", { handles: true })).toBe("handle");
     expect(idContactKind("@jane")).toBeNull();
   });

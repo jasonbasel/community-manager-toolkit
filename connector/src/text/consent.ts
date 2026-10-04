@@ -6,7 +6,7 @@
  */
 import {
   ACTIONED_RE, ANY_SIGNAL_STEM, BE_PARTICIPLE, CLAUSE_SPLIT, CONTACT_TERMS, MAX_NOTE_CHARS, MAX_NOTE_CLAUSES, NOTE_REWRITES, OPT_OUT_SIGNALS, REMOVAL_SIGNALS,
-  REPORTING_WORDS, SIGNAL_CANCELLERS, STOP_KEYWORD, STRONG_REFUSALS, WEAK_NEGATORS, WISH_WORDS,
+  REPORTING_WORDS, SIGNAL_CANCELLERS, STOPPED_REPORTING, STOP_KEYWORD, STRONG_REFUSALS, WEAK_NEGATORS, WISH_WORDS,
 } from "../data/consent-signals.js";
 import { APOSTROPHES, fold } from "./normalise.js";
 
@@ -27,12 +27,19 @@ export function noteClauses(note: string): { clauses: string[]; truncated: boole
   return { clauses: out, truncated };
 }
 
-/** The lexical net: a contact term with a refusal in the same clause, unless the clause only reports what happened. */
+/**
+ * The lexical net: a contact term with a refusal in the same clause. A strong refusal (an instruction or
+ * wish: "no further contact", "do not contact", "should not be contacted") always counts, even in a clause
+ * that also reports something ("she has moved abroad"). The reporting exemption only softens WEAK
+ * negations, so "no reply to my email" and "never contacted" stay silent.
+ */
 export function contactRefusal(clause: string): boolean {
+  clause = clause.replace(STOPPED_REPORTING, " ");
   if (!CONTACT_TERMS.test(clause)) return false;
+  if (STRONG_REFUSALS.test(clause)) return true;
   const wish = WISH_WORDS.test(clause);
   if (!wish && REPORTING_WORDS.test(clause)) return false;
-  return STRONG_REFUSALS.test(clause) || (WEAK_NEGATORS.test(clause) && (wish || BE_PARTICIPLE.test(clause)));
+  return WEAK_NEGATORS.test(clause) && (wish || BE_PARTICIPLE.test(clause));
 }
 
 export function findConsentSignals(note: string | null | undefined): ConsentSignals {

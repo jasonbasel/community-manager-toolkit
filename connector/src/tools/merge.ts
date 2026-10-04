@@ -85,8 +85,12 @@ const DATE_STAMP = /^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/;
  * A source label (or ID prefix) that carries a contact detail: an email, link or phone shape anywhere in it, or a run of
  * seven or more digits ("whatsapp-447700900311") that is not a date stamp. Such a label is never echoed.
  */
-export const labelHasContact = (label: string): boolean =>
-  !!idContactKind(label) || findPhones(label).length > 0 || (label.match(/\d{7,}/g) ?? []).some((run) => !DATE_STAMP.test(run));
+export const labelHasContact = (label: string): boolean => {
+  if (idContactKind(label) || findPhones(label).length > 0) return true;
+  // Join digit groups split by separators ("44-7700-900311", "+44_7700_900311") before looking for long runs.
+  const joined = label.replace(/(?<=\d)[\s\-_.()+]+(?=[\d+])/g, "").replace(/\+/g, "");
+  return (joined.match(/\d{7,}/g) ?? []).some((run) => !DATE_STAMP.test(run));
+};
 
 function optIn(v: unknown): "yes" | "no" | "unknown" | null {
   if (v === true) return "yes";

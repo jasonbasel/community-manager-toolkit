@@ -20,6 +20,9 @@
  * an opt-out.
  */
 import { addDays, cmp, daysBetween, exactKey, isPlaceholderName, nameKey, parseDate, parseInstant } from "../text/normalise.js";
+
+/** Opt-out signal ids that only mean "erase me"; a removal_request naming a party explains them. */
+const ERASURE_SIGNAL_IDS = new Set(["erase_person", "forget_me", "be_forgotten", "remove_me", "asked_removed"]);
 import { MAX_NOTE_CHARS, MAX_NOTE_CLAUSES } from "../data/consent-signals.js";
 import { findConsentSignals, isActioned } from "../text/consent.js";
 import { InputError } from "./errors.js";
@@ -112,8 +115,19 @@ class People {
     const nk = (s: string) => { const k = nameKey(s); return k && !isPlaceholderName(k) ? `n:${k}` : ""; };
     // A placeholder word ("Unknown", "J S") is never a key in any form; a name that normalises to nothing ("☺") still has its exact key.
     const placeholder = (s: string) => { const k = nameKey(s); return !!k && isPlaceholderName(k); };
-    if (name && !placeholder(name)) { if (nk(name)) out.push({ k: nk(name), rank: 0, label: name }); out.push({ k: idKey(name), rank: 0, label: name }); }
-    if (bare) { out.push({ k: idKey(bare), rank: /\s/.test(bare) ? 1 : 2, label: bare }); if (nk(bare)) out.push({ k: nk(bare), rank: /\s/.test(bare) ? 1 : 2, label: bare }); }
+    // Whitespace-free exact key: "王芳" and "王 芳" are one person (over-joining only ever holds more people).
+    const compact = (s: string) => { const k = exactKey(s).replace(/\s+/g, ""); return k ? `c:${k}` : ""; };
+    if (name) {
+      if (!placeholder(name) && nk(name)) out.push({ k: nk(name), rank: 0, label: name });
+      out.push({ k: idKey(name), rank: 0, label: name });
+      if (!placeholder(name) && compact(name)) out.push({ k: compact(name), rank: 0, label: name });
+    }
+    if (bare) {
+      const rank = /\s/.test(bare) ? 1 : 2;
+      out.push({ k: idKey(bare), rank, label: bare });
+      if (nk(bare)) out.push({ k: nk(bare), rank, label: bare });
+      if (!placeholder(bare) && compact(bare)) out.push({ k: compact(bare), rank, label: bare });
+    }
     if (id) out.push({ k: idKey(id), rank: 3, label: id });
     return out;
   }
@@ -186,14 +200,17 @@ export function planWeek(input: PlanInput) {
     const optOutSignal = sig.opt_out.length > 0, removalSignal = sig.removal.length > 0;
     // A removal request for a party is also an opt-out for that party: nothing proactive goes to someone who asked to be forgotten.
     const named = new Set<Side>([...sides(outField), ...sides(remField)]);
-    const optOutKnown = outField !== undefined || named.size > 0;
+    // Only an explicit opted_out makes the opt-out "known": a removal_request for one party says nothing about the other.
+    const optOutKnown = outField !== undefined, removalKnown = remField !== undefined;
+    // Erasure wording ("delete all my data", "forget me") is explained by a removal_request that names a party;
+    // any other opt-out wording ("DNC", "stop contacting") still has to be accounted for by opted_out.
+    const explainedByRemoval = removalKnown && sides(remField).length > 0;
+    const optOutWording = explainedByRemoval ? sig.opt_out.some((id) => !ERASURE_SIGNAL_IDS.has(id)) : optOutSignal;
     let hold: Side[] = [...named], review: string | null = null;
-    if (!optOutKnown && remField === undefined) {
-      if (optOutSignal || removalSignal) { hold = ["requester", "target"]; review = UNSAID; }
-    } else if ((optOutKnown && named.size === 0 && optOutSignal) || (remField === "none" && removalSignal)) {
+    if ((outField === "none" && optOutWording) || (remField === "none" && removalSignal)) {
       hold = ["requester", "target"]; review = DISAGREE; // the fields deny what the note says: keep them, hold both, flag the row
-    } else if ((!optOutKnown && optOutSignal) || (remField === undefined && removalSignal)) {
-      hold = ["requester", "target"]; review = UNSAID; // one field left open, and the note has wording for it
+    } else if ((!optOutKnown && optOutWording) || (!removalKnown && removalSignal)) {
+      hold = ["requester", "target"]; review = UNSAID; // a field left open, and the note has wording for it
     }
     const where = `ledger ${r.intro_id ?? `row ${i + 1}`}`;
     if (review) needs_review.push({

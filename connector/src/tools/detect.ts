@@ -1,4 +1,5 @@
 /** detect_member_fields: map an export's columns to the canonical member fields (DESIGN §4.1). */
+import { labelHasContact } from "./merge.js";
 import {
   ASK_HELP_PHRASES, ASK_PHRASES, CONTACT_PATTERNS, GENERIC_ALIASES, HEADER_WORDS, IGNORED_HEADERS, MULTI_FIELDS, NOTE_PHRASES, NOT_ACTIVITY_PATTERNS,
   OFFER_PHRASES, SENSITIVE_COLUMN_PATTERNS, type AliasRule, type CanonicalField,
@@ -171,7 +172,7 @@ function statusValues(values: string[]): { values: Record<string, string>; unlis
 export function detectMemberFields(input: DetectInput): DetectOutput {
   const given = input.headers.map((h) => String(h ?? "").trim());
   given.forEach((h, i) => { if (!h) throw new InputError(`headers[${i}] is empty; pass the header text exactly as it appears in the export`); });
-  const sourceName = isEmailLike(input.source_name) || isPhoneLike(input.source_name) ? "(source name not shown: it looks like a contact detail)" : input.source_name;
+  const sourceName = isEmailLike(input.source_name) || isPhoneLike(input.source_name) || labelHasContact(input.source_name) ? "(source name not shown: it contains a contact detail)" : input.source_name;
   // The known header vocabulary: exact entries (generic aliases, deliberately ignored headers, platform columns) and patterns
   // (question phrases, field words, contact, sensitive and engagement patterns). Only a header in it is ever echoed back, and a
   // header known only by a pattern must also be shaped like a column name (or a single form question), never like free text.

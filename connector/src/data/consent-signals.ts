@@ -43,10 +43,14 @@ export interface SignalRule { id: string; re: RegExp }
  * mentions a signal phrase counts, however it is qualified ("No longer interested — DNC").
  */
 const NEG = String.raw`(?:not|never|no longer|didnt|did not|hasnt|has not|havent|have not|hadnt|had not|doesnt|does not|dont|do not|wont|will not|isnt|is not|arent|are not|wasnt|was not|werent|were not)`;
+/** "stopped replying", "stopped coming": reports what happened, not a request to stop contact. */
+export const STOPPED_REPORTING = /\bstop(?:ped|s|ping)?\s+(?:repl\w*|respond\w*|answer\w*|engag\w*|coming|attending|showing up|turning up)\b/g;
+
 export const SIGNAL_CANCELLERS: readonly RegExp[] = [
   new RegExp(String.raw`\b${NEG}\s+(?:yet\s+|actually\s+|formally\s+|ever\s+|been\s+|officially\s+)*opt(?:ed|s|ing)?\s?out\b`, "g"),
   new RegExp(String.raw`\b${NEG}\s+(?:yet\s+|actually\s+|formally\s+|ever\s+|been\s+|officially\s+)*unsub(?:scrib\w*|bed|s|bing)?\b`, "g"),
   /\b(?:dont|do not|never|not|didnt|did not|wont|will not|cant|cannot|couldnt|could not|mustnt|must not|shouldnt|should not|lets not)\s+(?:ever\s+)?forget\b/g,
+  STOPPED_REPORTING,
 ];
 
 /** Opt-out of messages: standalone phrases that always signal. */
@@ -78,7 +82,7 @@ export const OPT_OUT_SIGNALS: readonly SignalRule[] = [
  * "never contacted", "stopped replying to messages", "doesn't have an email".
  */
 export const CONTACT_TERMS = /\b(?:contact(?:s|ed|ing)?|messag(?:e|es|ed|ing)|msgs?|emails?|emailed|emailing|reachout|calls?|called|calling|texts?|texted|texting|pings?|pinged|pinging|followup|invit(?:e|es|ed|ing|ation|ations)|newsletters?|marketing|intros?|introductions?|introduc(?:e|ed|ing)|outreach|approach(?:es|ed|ing)?|dms?|nudg(?:e|es|ed|ing)|comms|mailings?|whatsapp|sms)\b/;
-export const STRONG_REFUSALS = new RegExp(String.raw`\b(?:stop(?:ped|s|ping)?|cease(?:d|s)?|should not|shouldnt|must not|mustnt|ought not|no more|no further|no longer|never again|remov(?:e|ed|es|ing)|refus(?:e|ed|es|ing)|declin(?:e|ed|es|ing) (?:all|any|further|more)|block(?:ed|s|ing)?|(?:do not|dont|does not|doesnt|did not|didnt|will not|wont|would not|wouldnt|cannot|cant) (?:wish|want|like|care|accept|welcome)|wish(?:es|ed)? not|not (?:to )?(?:wish|want|like|accept|welcome)|(?:not|no longer) open to|not welcome|unwelcome|asked (?:\w+ ){0,2}?(?:to )?not|told (?:\w+ ){0,2}?(?:to )?not|not to be|do not|dont|does not|doesnt|will not|wont|never (?:ever )?(?:contact|message|email|call|text|ping|invite|introduce|approach|nudge|dm|reachout|followup|chase|bother)\b|no (?:marketing|newsletters?|comms|outreach|intros?|introductions?|messages?|emails?|calls?|texts?|contact|invites?|invitations?|dms?|nudges?|pings?|approaches|mailings?|sms|whatsapp))\b`);
+export const STRONG_REFUSALS = new RegExp(String.raw`\b(?:stop(?:ped|s|ping)?|cease(?:d|s)?|should not|shouldnt|must not|mustnt|ought not|no more|no further|no longer|never again|remov(?:e|ed|es|ing)|refus(?:e|ed|es|ing)|declin(?:e|ed|es|ing) (?:all|any|further|more)|block(?:ed|s|ing)?|(?:do not|dont|does not|doesnt|did not|didnt|will not|wont|would not|wouldnt|cannot|cant) (?:wish|want|like|care|accept|welcome)|wish(?:es|ed)? not|not (?:to )?(?:wish|want|like|accept|welcome)|(?:not|no longer) open to|not welcome|unwelcome|asked (?:\w+ ){0,2}?(?:to )?not|told (?:\w+ ){0,2}?(?:to )?not|not to be|(?:do not|dont|does not|doesnt|will not|wont)(?:\s+(?!(?:have|has|had|got|get|know\w*|use\w*|own\w*|hold\w*|keep\w*|see\w*|recall\w*|remember\w*)\b)\w+){0,2}?\s+(?:contact\w*|messag\w*|e-?mail\w*|call\w*|text\w*|ping\w*|invit\w*|introduc\w*|approach\w*|nudg\w*|dms?|reachout|followup|chas\w*|bother\w*|send\w*|add|include|share|reach)\b|never (?:ever )?(?:to )?(?:contact|message|email|call|text|ping|invite|introduce|approach|nudge|dm|reachout|followup|chase|bother)\b|no (?:marketing|newsletters?|comms|outreach|intros?|introductions?|messages?|emails?|calls?|texts?|contact|invites?|invitations?|dms?|nudges?|pings?|approaches|mailings?|sms|whatsapp)(?!\s+(?:details?|info\w*|numbers?|address\w*|on file|on record|yet|available|known|listed|records?|data|card)\b))\b`);
 export const WEAK_NEGATORS = /\b(?:no|not|never|nor|didnt|did not|hasnt|has not|havent|have not|hadnt|had not|wasnt|was not|werent|were not|isnt|is not|arent|are not|cant|cannot|couldnt|could not)\b/;
 export const BE_PARTICIPLE = /\b(?:to be|be|being|been|get|getting) (?:contacted|messaged|emailed|called|texted|pinged|invited|approached|introduced|nudged|added|included|reachout|chased|bothered|disturbed)\b/;
 // In a ledger, a bare "ask"/"asked" is the manager's consent ask ("intro never asked"); only "asked to / not / that / us / for" is the member's wish.

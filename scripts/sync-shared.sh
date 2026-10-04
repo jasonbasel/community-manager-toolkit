@@ -22,14 +22,14 @@ elif [ -n "${1:-}" ]; then
   exit 2
 fi
 
-# Which shared files each skill needs. Every skill gets all six: the shared files point to
+# Which shared files each skill needs. Every skill gets all seven: the shared files point to
 # each other (guardrails.md and community-profile.md cite message-craft.md and ledger.md;
 # data-sources.md cites community-profile.md and platform-guide.md), so a partial set
 # would leave a skill with dangling references.
 files_for() {
   case "$1" in
     getting-started|member-directory|weekly-community-review|event-matchmaking|member-introductions|community-impact-report|new-member-onboarding|member-re-engagement)
-      echo "guardrails.md data-sources.md community-profile.md platform-guide.md ledger.md message-craft.md" ;;
+      echo "guardrails.md data-sources.md community-profile.md platform-guide.md ledger.md message-craft.md connector-tools.md" ;;
     *)
       return 1 ;;
   esac

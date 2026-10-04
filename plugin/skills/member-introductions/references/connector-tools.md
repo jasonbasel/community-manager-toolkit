@@ -51,7 +51,10 @@ said yes to the batch. Use the returned members, coverage and gaps for Steps 7 a
 
 **Weekly community review.** Call `plan_week` with `today`, the ledger rows, events in
 the next 14 days (`matched`, and for invite-only events `invitations_sent` and `people`),
-new members (`welcomed`), and `planned_touches` for anything already scheduled. If you
+new members (`welcomed`), and `planned_touches` for anything already scheduled. Pass
+`opted_in` wherever you know it (new members, event invitees, planned touches) and use the
+same name or member_id for a person across every input, so opt-outs and spacing apply to
+them everywhere. If you
 have activity data, call `segment_members` first and pass its segments. Present the
 returned items, spacing conflicts and held items in the skill's format.
 

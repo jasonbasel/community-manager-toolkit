@@ -43,7 +43,18 @@ interface Prep {
   asks: string[]; offers: string[]; tags: string[]; notes: string; inferred: Set<string>; anchored: boolean;
 }
 
-const sha = (s: string) => createHash("sha256").update(s).digest("hex").slice(0, 10);
+/** Stable 10-character id from a seed, in base32 letters a–z and digits 2–7: never phone-shaped (no 0 or 1, never all digits). */
+const B32 = "abcdefghijklmnopqrstuvwxyz234567";
+const sha = (s: string) => {
+  const bytes = createHash("sha256").update(s).digest();
+  let bits = 0, acc = 0, out = "";
+  for (const b of bytes) {
+    acc = (acc << 8) | b; bits += 8;
+    while (bits >= 5 && out.length < 10) { out += B32[(acc >> (bits - 5)) & 31]; bits -= 5; }
+    if (out.length >= 10) break;
+  }
+  return /^[2-7]+$/.test(out) ? `a${out.slice(1)}` : out;
+};
 const yesSet = new Set(OPT_IN_YES), noSet = new Set(OPT_IN_NO);
 const KNOWN_INFERABLE = new Set(["asks", "offers", "tags", "organisation", "role", "location", "notes"]);
 const pct = (n: number, d: number) => (d ? Math.round((1000 * n) / d) / 10 : 0);

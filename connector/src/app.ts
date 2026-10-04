@@ -70,6 +70,8 @@ export function createApp(opts: AppOptions = {}) {
     return next();
   });
 
+  // MCP responses are per-request answers: never cache them (matters behind Firebase Hosting or any CDN).
+  app.use("/mcp", async (c, next) => { await next(); c.res.headers.set("Cache-Control", "no-store"); });
   app.use("/mcp", cors({
     origin: "*", allowMethods: ["POST", "GET", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Accept", "Authorization", "Mcp-Session-Id", "Mcp-Protocol-Version", "Last-Event-ID"],

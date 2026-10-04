@@ -41,7 +41,7 @@ export function computeImpactMetrics(input: ImpactInput) {
   if (end < start) throw new InputError(`period.end (${end}) is before period.start (${start})`);
   const inPeriod = (d: string | null) => !!d && d >= start && d <= end;
   let noCreated = 0, outside = 0, badStatus = 0, badRating = 0;
-  const rows = input.ledger.flatMap((r, i) => {
+  const rows = input.ledger.flatMap((r) => {
     const created = parseDate(r.created ?? "");
     if (!created) { noCreated++; return []; }
     if (!inPeriod(created)) { outside++; return []; }
@@ -57,7 +57,6 @@ export function computeImpactMetrics(input: ImpactInput) {
     }
     const asked = !!parseDate(r.asked_on ?? "") || ["asked", "accepted", "declined", "lapsed", "connected", "withdrawn"].includes(status);
     const connected = (status === "connected" || !!parseDate(r.connected_on ?? "")) && outcome !== "didn't connect";
-    void i;
     return [{ created, month: created.slice(0, 7), source: fold(String(r.source ?? "")).trim() || "unspecified", status, asked, connected, outcome, rating }];
   });
 

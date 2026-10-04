@@ -31,7 +31,7 @@ export interface PlanItem {
 }
 
 const OPT_OUT_RE = /\b(opt(ed)?[- ]?out|unsubscrib\w*|do not contact|don'?t contact|stop (messag|contact)\w*|remove[ds]? (them |him |her )?from|asked to be removed|not to receive|forget)\b/i;
-const ACTIONED_RE = /\b(honou?red|actioned|done|processed|completed|removed)\b/i;
+const ACTIONED_RE = /\b(honou?red|actioned|done|processed|completed)\b/i;
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const nice = (iso: string) => { const d = new Date(iso + "T00:00:00Z"); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)}`; };

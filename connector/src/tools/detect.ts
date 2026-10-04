@@ -105,7 +105,6 @@ function dateFormat(values: string[]): MappingEntry["date_format"] | undefined {
 }
 
 const truthy = (v: string) => ["1", "true", "yes", "y", "x", "checked"].includes(v);
-const falsy = (v: string) => ["0", "false", "no", "n", ""].includes(v);
 
 function optInValues(values: string[], inverted: boolean, preset?: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};

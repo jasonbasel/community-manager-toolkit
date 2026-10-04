@@ -1,0 +1,13 @@
+# Files uploaded by `gcloud run deploy --source .`. This file replaces .gitignore for the upload,
+# so keep it: without it gcloud would skip site/ and brand-fonts/ (both gitignored).
+#   site/         copy of ../docs made by `npm run build`; the server serves it. MUST be uploaded.
+#   brand-fonts/  licensed fonts staged by `npm run fonts:stage`; embedded into the views at build
+#                 time. Uploaded to our own Cloud Build only; never committed (see DEPLOY.md).
+.gcloudignore
+.git/
+.gitignore
+node_modules/
+dist/
+test/
+*.log
+.DS_Store

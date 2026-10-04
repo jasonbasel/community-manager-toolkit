@@ -128,6 +128,7 @@ export function pairAttendees(input: PairInput) {
   const score = new Float32Array(n * n);
   const aoArr = new Float32Array(n * n);
   const posCount = new Int32Array(n), viableCount = new Int32Array(n);
+  const goodCount = new Int32Array(n), goodSum = new Float64Array(n);
   const thinW = Float32Array.from(thin, (t) => (t ? SCORING.thin_penalty : 0));
   const AOW = SCORING.ask_offer_weight, TAGW = SCORING.shared_tag_weight, TAGCAP = SCORING.shared_tag_cap, CW = SCORING.complementary_weight;
   for (let a = 0; a < n; a++) {
@@ -146,6 +147,7 @@ export function pairAttendees(input: PairInput) {
       aoArr[k] = aoArr[kb] = ao;
       viableCount[a]++; viableCount[b]++;
       if (ao + st > 0) { posCount[a]++; posCount[b]++; }
+      if (ao >= 3) { goodCount[a]++; goodCount[b]++; goodSum[a] += s; goodSum[b] += s; }
     }
   }
   const S = (a: number, b: number) => score[a * n + b];
@@ -313,12 +315,7 @@ export function pairAttendees(input: PairInput) {
     if (backup[i] < 0 && backupNote.has(i)) backup_notes[G[i].id] = backupNote.get(i)!;
   }
   const connectors_top5 = [...Array(n).keys()]
-    .map((i) => {
-      let good = 0, sum = 0;
-      const row = i * n;
-      for (let j = 0; j < n; j++) if (blocked[row + j] === 0 && aoArr[row + j] >= 3) { good++; sum += score[row + j]; }
-      return { i, good, sum };
-    })
+    .map((i) => ({ i, good: goodCount[i], sum: goodSum[i] }))
     .filter((c) => c.good > 0)
     .sort((a, b) => b.good - a.good || b.sum - a.sum || a.i - b.i)
     .slice(0, 5)

@@ -1,0 +1,7 @@
+# Docker build context (Cloud Build). Keeps site/ and brand-fonts/; drops local build output.
+node_modules/
+dist/
+test/
+.git/
+*.log
+.DS_Store

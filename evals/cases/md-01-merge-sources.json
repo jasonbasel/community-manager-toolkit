@@ -17,7 +17,7 @@
     },
     {
       "id": "unique-count",
-      "text": "It reports 52 unique people after merging, from HubSpot (40 records), Slack (35 accounts) and the application form (30 rows from 29 people). It does not report the raw row total, and it does not count the 9 unresolved Discord accounts as extra people (showing 61 rows is fine only if 9 of them are clearly marked as unresolved Discord accounts)."
+      "text": "It reports 52 unique people after merging, from HubSpot (40 records), Slack (35 accounts) and the application form (30 rows from 29 people). If the 16 exact-name Discord accounts are held for a batch confirmation, reporting 52 people plus those pending accounts is also right. It does not report the raw row total, and it does not count the 9 unresolved Discord accounts as extra people (showing 61 rows is fine only if 9 of them are clearly marked as unresolved Discord accounts)."
     },
     {
       "id": "email-mismatch-merged",
@@ -33,7 +33,7 @@
     },
     {
       "id": "discord-not-guessed",
-      "text": "Discord rows are merged into a person only where the display name is exactly that person's full name (16 of the 25 rows). The other 9 rows (Sam P., Xi, Tobias L., Beatrix H, robo_ifs, Barn, zuzu, Night Owl, mrk) are listed as unmatched or uncertain for the manager and are not merged. 'Sam P.' and 'Xi' are flagged as ambiguous (two possible people each), and handles that tempt a guess, such as robo_ifs or Barn, are not guessed."
+      "text": "The Discord rows whose display name is exactly one person's full name (16 of the 25 rows) are either presented as one batch for the manager to confirm (for example '16 Discord accounts match a member's full name exactly: merge them all?') or merged with that match basis stated; both count. The other 9 rows (Sam P., Xi, Tobias L., Beatrix H, robo_ifs, Barn, zuzu, Night Owl, mrk) are listed as unmatched or uncertain for the manager and are not merged. 'Sam P.' and 'Xi' are flagged as ambiguous (two possible people each), and handles that tempt a guess, such as robo_ifs or Barn, are not guessed."
     },
     {
       "id": "deactivated-slack",

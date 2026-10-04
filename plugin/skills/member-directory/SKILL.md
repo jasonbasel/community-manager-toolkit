@@ -79,6 +79,9 @@ organisation only where it's clear (never a public domain such as gmail.com), da
    username that might match, a nickname): list it for the manager with organisation,
    role and source for each record. Never merge these yourself; until the manager
    decides, they stay separate.
+4. Make the easy ones one decision: chat accounts whose display name is exactly one
+   member's full name go in a single batch question ("16 Discord accounts match a
+   member's full name exactly. Merge them all, or review them?"). A yes merges the batch.
 
 ## Step 5: Merge with precedence
 

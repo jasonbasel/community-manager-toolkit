@@ -188,7 +188,7 @@ Every view degrades: the tool's text summary is complete without it.
 - No storage, no database, no payload logging. Logs: tool name, latency, record counts,
   status. No outbound network calls. No analytics in views; no third-party scripts.
 - Inputs validated with zod; request body ≤2 MB; list limits as above; per-IP rate limit
-  (60 requests/minute, in memory).
+  (600 requests/minute by default, in memory; Claude and ChatGPT call from shared IPs, so a low limit would throttle many users together).
 - Security headers on pages; CORS as the MCP transport requires.
 - Privacy policy text (drafted by a separate task): "processed in memory, not stored",
   hosting region, sub-processor (the cloud host).

@@ -13,7 +13,7 @@ export const CONFIG = {
   /** The public MCP URL users add in Claude; Claude derives the views' sandbox domain from it. */
   publicMcpUrl: process.env.PUBLIC_MCP_URL ?? `${SERVICE.website}/mcp`,
   /** Requests per IP per minute (in memory, per instance). */
-  rateLimitPerMin: num(process.env.RATE_LIMIT_PER_MIN, 60),
+  rateLimitPerMin: num(process.env.RATE_LIMIT_PER_MIN, 600),
   /** Proxies in front of the service that append to X-Forwarded-For (Cloud Run: 1; Firebase Hosting in front: 2). */
   trustedProxyHops: num(process.env.TRUSTED_PROXY_HOPS, 1),
   maxBodyBytes: 2 * 1024 * 1024,

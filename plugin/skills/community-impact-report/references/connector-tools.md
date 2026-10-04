@@ -40,9 +40,10 @@ call it again with the arrivals only and the met pairs in `avoid_pairs`.
 up to five sample rows, and show its mapping (with your corrections) for the one
 confirmation. Then call `merge_member_records` with the mapped records: `source`,
 `source_id`, the profile fields, `email` only for matching, and `inferred_fields` for
-anything you inferred from free text. Show the returned uncertain matches; when the
-manager decides, call it again with `decisions` (`same: true` merges, `false` keeps
-apart). Use the returned members, coverage and gaps for Steps 7 and 8.
+anything you inferred from free text. Show the returned uncertain matches, with exact-name chat accounts
+as one batch question; when the manager decides, call it again with `decisions`
+(`same: true` merges, `false` keeps apart), and with `merge_exact_names: true` if they
+said yes to the batch. Use the returned members, coverage and gaps for Steps 7 and 8.
 
 **Weekly community review.** Call `plan_week` with `today`, the ledger rows, events in
 the next 14 days (`matched`, and for invite-only events `invitations_sent` and `people`),

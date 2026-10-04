@@ -48,7 +48,7 @@ gcloud run deploy community-manager-toolkit \
   --timeout 60 \
   --port 8080 \
   --service-account toolkit-run@commonos-toolkit.iam.gserviceaccount.com \
-  --set-env-vars PUBLIC_MCP_URL=https://toolkit.commonos.ai/mcp,RATE_LIMIT_PER_MIN=60,TRUSTED_PROXY_HOPS=1
+  --set-env-vars PUBLIC_MCP_URL=https://toolkit.commonos.ai/mcp,RATE_LIMIT_PER_MIN=600,TRUSTED_PROXY_HOPS=1
 ```
 
 `--min-instances 0` scales to zero. Drop `--service-account` if you skipped the optional step. The
@@ -60,14 +60,14 @@ command prints the service URL (`https://community-manager-toolkit-…-nw.a.run.
 |---|---|---|
 | `PORT` | 8787 locally; Cloud Run sets 8080 | Listening port |
 | `PUBLIC_MCP_URL` | `https://toolkit.commonos.ai/mcp` | Must equal the URL people add in Claude. Claude derives the views' sandbox domain from it; if they differ, the views won't render in Claude (the tools still work). While testing on the `run.app` URL, set it to that URL's `/mcp`. |
-| `RATE_LIMIT_PER_MIN` | 60 | Requests per client IP per minute, in memory, per instance |
+| `RATE_LIMIT_PER_MIN` | 600 | Requests per client IP per minute, in memory, per instance. Claude and ChatGPT call from shared IPs, so keep it high; cost is capped by max instances. |
 | `TRUSTED_PROXY_HOPS` | 1 | Proxies that append to `X-Forwarded-For`: 1 for Cloud Run directly, 2 behind Firebase Hosting |
 | `CMT_LOG` | on | `off` silences the app's own logs |
 | `SITE_DIR` | `./site` | Override the pages folder |
 | `BRAND_FONTS_DIR` | build time only | Where the build reads fonts (Dockerfile sets `/app/brand-fonts`) |
 
 Change a variable without rebuilding:
-`gcloud run services update community-manager-toolkit --region europe-west2 --update-env-vars RATE_LIMIT_PER_MIN=300`
+`gcloud run services update community-manager-toolkit --region europe-west2 --update-env-vars RATE_LIMIT_PER_MIN=1200`
 
 ## 4. Verify
 
@@ -153,7 +153,7 @@ After either option: `npm run smoke -- https://toolkit.commonos.ai`, and keep `P
   inputs, outputs or IP addresses. Cloud Run's own request logs in Cloud Logging do record IP address,
   user agent and URL (default retention 30 days). The privacy policy must say so, or you can add a
   log exclusion for `run.googleapis.com/requests`.
-- **Rate limit.** 60 requests per minute per IP, in memory, per instance (up to 2 instances). Claude
+- **Rate limit.** 600 requests per minute per IP, in memory, per instance (up to 2 instances). Claude
   and ChatGPT call connectors from their own servers, so many users can share an IP. If users see
   "Rate limit exceeded", raise `RATE_LIMIT_PER_MIN` with the update command above.
 - **Rollback:** `gcloud run revisions list --service community-manager-toolkit --region europe-west2`, then

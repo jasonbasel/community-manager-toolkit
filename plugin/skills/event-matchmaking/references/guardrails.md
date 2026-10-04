@@ -139,6 +139,9 @@ Screen every intro request before searching for candidates.
 - Non-member event guests get event messages only, never onboarding or re-engagement.
 - Apply the Community profile's "who can be messaged" rule and the member directory's
   `opted_in` column. If opt-in status is still unknown, ask the manager before drafting.
+- An email opt-out flag that is off ("Email Opt Out = false", subscribed to marketing)
+  only means email isn't refused. It isn't consent for WhatsApp, SMS or other channels:
+  record `opted_in` as `unknown` unless there's a recorded opt-in, and say so.
 
 ## 11. Data minimisation
 
@@ -149,12 +152,14 @@ Screen every intro request before searching for candidates.
   directory keeps only `email_domain` and `source_ids`. The only place they appear is the
   recipient field of a draft the manager asked you to create in their own email or chat
   tool, after both people said yes.
-- Never print an email address or part of one, even to explain a match ("matched on a
-  different work email" is enough).
+- Never print an email address, phone number or part of one, even to explain a match or
+  to say you left it out ("matched on a different work email" or "contact details left
+  out" is enough).
 - Leave personal or sensitive content in chats, notes or forms (health, family,
   relationships, money worries, anything private) out silently: don't say it existed,
-  whose it was or what it was about. If someone asked not to be contacted until a date,
-  record only "asked not to be contacted until [date]".
+  whose it was or what it was about. Record "asked not to be contacted until [date]" only when
+  the person explicitly asked the community not to contact them; never derive it from
+  personal news.
 - Don't copy full records, notes or chat messages into outputs; summarise in a line.
 - Don't quote members back (from a chat export, Slack or Discord messages, meeting notes,
   form or registration answers) unless it's needed for the task and the manager agrees.

@@ -111,23 +111,27 @@ plugin/            the plugin itself (Claude plugin path; source of the OpenAI Z
 ```
 bash scripts/check.sh                # claude plugin validate + portability lint + fixture check
 bash scripts/build-openai-zip.sh     # dist/community-manager-toolkit-openai.zip (no Claude-only files)
-bash evals/run.sh                    # run every case with and without the plugin (uses the local claude CLI)
+bash evals/run.sh --mode all         # every case: no plugin, plugin, plugin + local connector (needs the connector running for the last arm)
 bash evals/grade.sh                  # LLM judge + regex checks, writes evals/results/<run>/summary.md
 ```
 
 The evals use only synthetic data (every person, company, email and phone number in `evals/fixtures/` is invented) and run the same prompts with and without the plugin, in an isolated session with file tools only and nothing able to send a message. See [`evals/README.md`](evals/README.md) for how the isolation works and what it cannot remove.
 
-**Results, 1 October 2026** (rubric pass rate on synthetic data, same prompts with and without the plugin). The plugin beat the no-plugin baseline on four skills and tied on the impact report:
+**Results, 4 October 2026** (v0.2: 20 cases, rubric pass rate on synthetic data, judged by a separate model; the same prompts with no plugin, with the plugin, and with the plugin plus the connector; normal effort). The plugin beat the no-plugin baseline on every skill:
 
-| Skill | With the plugin | Without | Result |
+| Skill | No plugin | Plugin | Plugin + connector |
 |---|---|---|---|
-| Event matchmaking | 97% | 54% | Ahead |
-| Member introductions | 98% | 84% | Ahead |
-| Member re-engagement | 100% | 84% | Ahead |
-| New member onboarding | 95% | 76% | Ahead |
-| Community impact report | 100% | 100% | Level |
+| Event matchmaking | 51% | 94% | 97% |
+| Getting started | 53% | 100% | 100% |
+| Weekly community review | 69% | 92% | 92% |
+| Member re-engagement | 68% | 95% | 100% |
+| New member onboarding | 81% | 100% | 90% |
+| Member introductions | 86% | 100% | 93% |
+| Member directory | 35% | 62% | 81% |
+| Community impact report | 90% | 95% | 100% |
+| Channel formatting | 93% | 100% | 100% |
 
-This run covers the five original skills. Results for the three v0.2 skills are not in it.
+The connector makes the arithmetic and the merging exact (the impact figures and the de-duplicated member count) and cut total run time by about 13% against the plugin alone. One sample per case, so differences of a point or two are noise.
 
 ## Support
 

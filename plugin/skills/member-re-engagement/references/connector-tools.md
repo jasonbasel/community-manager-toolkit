@@ -31,9 +31,13 @@ with one entry per guest: `id` (name or guest ID), `organisation`, `role`, `side
 (founder, investor, operator, advisor, corporate, academic or talent), short `tags`,
 `asks` and `offers` as short phrases, `member`, and `thin` for thin profiles. Put pairs
 to avoid in `avoid_pairs` and hosts, staff and opted-out guests in `exclude_ids`. Use
-`options.mode: "host_buddy"` when most profiles are thin. Then write one reason line per
-group from its `basis` (20 words or fewer, sensitive-attribute rule applied), and show
-the approval table from the returned groups, backups and unmatched list. For door mode,
+`options.mode: "host_buddy"` when most profiles are thin. Send the guests' details as they
+appear (role, organisation, and their registration answers split into short ask and
+offer phrases); don't polish profiles first. The tool already enforces the
+same-organisation, avoid-list and cap rules, so don't re-check pairs against them. Use
+each group's `reason_hint` as the reason line, edited only for clarity (20 words or
+fewer; check it against the sensitive-attribute rule), and show the approval table from
+the returned groups, backups and unmatched list. For door mode,
 call it again with the arrivals only and the met pairs in `avoid_pairs`.
 
 **Member directory.** For each source, call `detect_member_fields` with the headers and

@@ -276,6 +276,14 @@ describe("MCP over Streamable HTTP", () => {
       expect(sc, name).toBeTruthy();
     }
   }, 30000);
+  it("accepts plan_week party fields in any case (final-round 7)", async () => {
+    const { r, sc } = await call("plan_week", { today: "2026-10-02", ledger: [{ intro_id: "r", requester: "A B", target: "C D", status: "asked", asked_on: "2026-09-01", opted_out: "Target", removal_request: " NONE " }] });
+    expect(r.isError).toBeFalsy();
+    expect((sc as { stats: { opted_out: number; needs_review: number } }).stats).toMatchObject({ opted_out: 1, needs_review: 0 });
+    const bad = await call("plan_week", { today: "2026-10-02", ledger: [{ requester: "A B", target: "C D", opted_out: "yes" }] });
+    expect(bad.r.isError).toBe(true);
+    expect(bad.text).toMatch(/opted_out/);
+  });
   it("returns specific errors", async () => {
     let res = await call("pair_attendees", { guests: [{ id: "A" }, { name: "no id" }] });
     expect(res.r.isError).toBe(true);

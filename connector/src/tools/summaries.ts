@@ -117,8 +117,9 @@ export function summarisePlan(o: PlanOutput): string {
   if (unclear.length) lines.push(`Held, ${UNCLEAR_OPT_OUT}: ${[...new Set(unclear.map((h) => h.person))].join(", ")}.`);
   if (o.needs_review.length) {
     const shown = o.needs_review.slice(0, 20);
-    lines.push(`Ledger rows to confirm (the note records an opt-out or removal request but not who it refers to; both people are held): ${shown.map((r) => `${r.intro_id ?? `row ${r.row + 1}`} (${r.requester} → ${r.target})`).join("; ")}${more(o.needs_review.length, shown.length)}`);
+    lines.push(`Ledger rows to confirm (the note records an opt-out or removal request but not who it refers to, or disagrees with the fields; both people are held): ${shown.map((r) => `${r.intro_id ?? `row ${r.row + 1}`} (${r.requester} → ${r.target}${r.reason.startsWith("note and fields disagree") ? "; note and fields disagree" : ""})`).join("; ")}${more(o.needs_review.length, shown.length)}`);
   }
+  if (o.warnings.length) lines.push(...o.warnings.map((w) => `Note: ${w}`));
   return lines.join("\n");
 }
 

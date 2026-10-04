@@ -72,12 +72,13 @@ export const segmentShape = {
   options: z.object({ spacing_days: z.number().int().min(1).max(60).optional(), min_gap_hours: z.number().int().min(0).max(720).optional() }).optional(),
 };
 
-const party = z.enum(["requester", "target", "both", "none"]);
+// Case and whitespace are normalised before the enum check, so "Target" or " BOTH " never fail the call.
+const party = z.preprocess((v) => (typeof v === "string" ? v.trim().toLowerCase() : v), z.enum(["requester", "target", "both", "none"]));
 const planLedgerRow = z.object({
   intro_id: opt(120), created: opt(40), source: opt(40), event: opt(200), requester: z.string().min(1).max(200), target: z.string().min(1).max(200),
   status: opt(40), asked_on: opt(40), answered_on: opt(40), connected_on: opt(40), outcome: opt(40), next_check: opt(40), notes: opt(2000),
-  opted_out: party.nullish().describe("Who the notes say opted out of messages, read by you: requester, target, both or none. Authoritative when set. When missing, any opt-out or removal wording in notes holds both people until the manager confirms"),
-  removal_request: party.nullish().describe("Who asked for information to be removed or forgotten, read by you: requester, target, both or none. Authoritative when set. When missing, any such wording in notes holds both people until the manager confirms"),
+  opted_out: party.nullish().describe("Who the notes say opted out of messages, read by you: requester, target, both or none. Leave it out rather than guess: when missing, or when 'none' is contradicted by opt-out wording in notes, both people are held until the manager confirms"),
+  removal_request: party.nullish().describe("Who asked for information to be removed, deleted or forgotten, read by you: requester, target, both or none. A removal request also counts as an opt-out for that person. Leave it out rather than guess: when missing, or when 'none' is contradicted by removal wording in notes, both people are held until the manager confirms"),
 });
 const optedIn = z.union([z.boolean(), s(60)]).nullish().describe("Explicit consent value; 'no' (or false, unsubscribed …) keeps the person out of every item");
 export const planShape = {

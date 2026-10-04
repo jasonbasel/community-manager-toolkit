@@ -124,6 +124,21 @@ const listable = (raw: string) => !!raw && raw.length <= 40 && !contactLike(raw)
 const dataLike = (h: string) => contactLike(h) || /^[\d\s.,:/+\-()%£$€]+$/.test(h) || parseDate(h) !== null || /^(?:true|false|yes|no)$/i.test(h);
 /** A cell that reads like a person ("Jane Doe") or an organisation ("Acme Ltd") rather than a column name. */
 const personLike = (h: string) => /^\p{Lu}[\p{L}'’.-]*(?: \p{Lu}[\p{L}'’.-]*){1,3}$/u.test(h);
+/**
+ * A cell shaped like a column name rather than free text: short, few words, no sentence punctuation, not
+ * digit-heavy ("Health status", "Industry (e.g. Healthcare)"; not "Founder; diagnosed with ADHD last year").
+ */
+const headerShaped = (h: string) => {
+  const t = h.trim().replace(/\b(?:e\.g|i\.e|etc|vs|no)\./gi, "").replace(/\?$/, ""); // "Pregnant?" is a header; the "?" alone is not a sentence
+  const digits = (t.match(/\d/g) ?? []).length;
+  return t.length <= 40 && t.split(/\s+/).length <= 5 && !/[.;:!?]/.test(t) && digits <= Math.floor(t.length / 4);
+};
+/** A single form question ("What are you hoping to get from the community?"): a question word, one "?" at the end, nothing sentence-like inside. */
+const questionShaped = (h: string) => {
+  const t = h.trim();
+  return /\?$/.test(t) && t.length <= 120 && t.split(/\s+/).length <= 14 && !/[.;:!?]/.test(t.slice(0, -1))
+    && /^(?:what|which|who|whom|whose|where|when|why|how|do|does|did|is|are|can|could|would|will|should|have|has|anything|any|tell|describe|please)\b/i.test(t);
+};
 const orgSuffixes = new Set(MATCH_SUFFIXES.flatMap((s) => s.split(" ")));
 const orgLike = (h: string) => { const t = plain(h).split(" "); return t.length >= 2 && orgSuffixes.has(t[t.length - 1]); };
 const headerWords = new Set(HEADER_WORDS);
@@ -157,11 +172,15 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
   const given = input.headers.map((h) => String(h ?? "").trim());
   given.forEach((h, i) => { if (!h) throw new InputError(`headers[${i}] is empty; pass the header text exactly as it appears in the export`); });
   const sourceName = isEmailLike(input.source_name) || isPhoneLike(input.source_name) ? "(source name not shown: it looks like a contact detail)" : input.source_name;
-  // The known header vocabulary: generic aliases, deliberately ignored headers, question phrases, field words, contact,
-  // sensitive and engagement patterns, and platform columns. Only a header in it is ever echoed back.
-  const knownVocabulary = (k: string, raw: string) => !!GENERIC_ALIASES[k] || !!IGNORED_HEADERS[k] || phraseField(k) !== null || containsField(k) !== null
-    || [...CONTACT_PATTERNS, ...SENSITIVE_COLUMN_PATTERNS, ...NOT_ACTIVITY_PATTERNS].some((re) => re.test(k))
+  // The known header vocabulary: exact entries (generic aliases, deliberately ignored headers, platform columns) and patterns
+  // (question phrases, field words, contact, sensitive and engagement patterns). Only a header in it is ever echoed back, and a
+  // header known only by a pattern must also be shaped like a column name (or a single form question), never like free text.
+  const exactVocabulary = (k: string, raw: string) => !!GENERIC_ALIASES[k] || !!IGNORED_HEADERS[k]
     || PLATFORMS.some((p) => !!p.overrides?.[k] || p.signals.some((sg) => sg.h === k || sg.raw === raw));
+  const patternVocabulary = (k: string) => phraseField(k) !== null || containsField(k) !== null
+    || [...CONTACT_PATTERNS, ...SENSITIVE_COLUMN_PATTERNS, ...NOT_ACTIVITY_PATTERNS].some((re) => re.test(k));
+  const knownVocabulary = (k: string, raw: string) => exactVocabulary(k, raw) || patternVocabulary(k);
+  const echoable = (k: string, raw: string) => exactVocabulary(k, raw) || (patternVocabulary(k) && (headerShaped(raw) || (phraseField(k) !== null && questionShaped(raw))));
   // A header row that holds a contact detail, is mostly numbers and dates, or is names and organisations with nothing
   // that reads as a column name, is the first data row of an export with no header row: never echo it. Columns are
   // then named by position and that row is read as a sample.
@@ -169,9 +188,9 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
   const headerless = given.some(contactLike) || given.filter(dataLike).length >= Math.max(2, Math.ceil(given.length / 2))
     || (!given.some((h) => knownHeader(hkey(h), h)) && given.some((h) => personLike(h) || orgLike(h))
       && given.filter((h) => personLike(h) || orgLike(h) || dataLike(h)).length >= Math.ceil(given.length / 2));
-  // Column labels: the header text only when it is known vocabulary and not a data value; every other column is
+  // Column labels: the header text only when it is echoable vocabulary and not a data value; every other column is
   // "column N" (1-based), so a cell of a data row mistaken for a header row can never be repeated.
-  const labels = given.map((h, i) => (!headerless && knownVocabulary(hkey(h), h) && !dataLike(h) && !contactLike(h) ? h : `column ${i + 1}`));
+  const labels = given.map((h, i) => (!headerless && echoable(hkey(h), h) && !dataLike(h) && !contactLike(h) ? h : `column ${i + 1}`));
   const raws = headerless ? labels : given;
   // Disambiguate duplicate headers so every column is reported once.
   const seen = new Map<string, number>();

@@ -305,6 +305,32 @@ describe("source IDs judged by the words of their prefix and source, in source_i
   });
 });
 
+describe("source labels and generic prefixes never carry a phone number (final-round 5)", () => {
+  const ids = (rec: MergeRecord) => m([rec]).members[0]?.source_ids ?? [];
+  it("masks a source label with a digit run or phone shape and says so", () => {
+    for (const source of ["whatsapp-447700900311", "WA 07700 900311", "sms_4155550100", "+44 7700 900999", "export-1790000000"]) {
+      const o = m([{ source, name: "Ann Lee", source_id: "77" }]);
+      expect(JSON.stringify(o), source).not.toMatch(/7700|4155550100|1790000000/);
+      expect(o.stats.by_source, source).toEqual({ unknown: 1 });
+      expect(o.warnings.join(" "), source).toMatch(/1 record\(s\) had a contact detail as their source name/);
+    }
+  });
+  it("keeps labels with dates, years and short numbers", () => {
+    for (const source of ["members-20260930.csv", "cohort-2026", "q3-2026-export", "form-123456", "event-2026-09-30"]) {
+      const o = m([{ source, name: "Bo Chan", source_id: "77" }]);
+      expect(o.stats.by_source, source).toEqual({ [sourceLabel(source)]: 1 });
+      expect(o.warnings.join(" "), source).not.toMatch(/contact detail as their source name/);
+    }
+  });
+  it("treats generic kind words as non-platform prefixes, so the record's phone source still decides", () => {
+    const o = m([{ source: "whatsapp", name: "Cleo Dunn", source_ids: ["chat:447700900311", "csv:447700900312", "community:447700900313", "export:447700900314", "file:447700900315", "list:447700900316", "sheet:447700900317", "form:447700900318", "group:447700900319", "slack:U0ABC123"] }]);
+    expect(JSON.stringify(o)).not.toMatch(/4477009003/);
+    expect(o.members[0].source_ids).toEqual(["slack:U0ABC123"]);
+    expect(ids({ source: "hubspot", name: "Dara Eze", source_ids: ["chat:12345678", "csv:9"] })).toEqual(["chat:12345678", "csv:9"]);
+    expect(ids({ source: "hubspot", name: "Eli Fox", source_ids: ["whatsapp-447700900311:77"] })).toEqual(["hubspot"]); // a prefix carrying a number drops the ID
+  });
+});
+
 describe("member_id seeds (review finding 11)", () => {
   it("two people on a shared mailbox get different member_ids", () => {
     for (const box of ["info", "hello", "admin", "team", "contact", "office", "enquiries", "support"]) {

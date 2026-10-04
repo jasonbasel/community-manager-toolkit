@@ -1,6 +1,8 @@
 /** plan_week: priorities, due rules, events, welcomes, report timing, spacing and opt-outs. */
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { planWeek, type PlanInput, type PlanLedgerRow, UNCLEAR_OPT_OUT } from "../src/tools/plan.js";
+import { planShape } from "../src/tools/schemas.js";
 import { summarisePlan } from "../src/tools/summaries.js";
 import { nameKey } from "../src/text/normalise.js";
 
@@ -28,6 +30,7 @@ describe("due items", () => {
   it("records opt-outs and never plans a touch for them", () => {
     expect(o.stats.opted_out).toBe(1);
     expect(o.needs_review).toEqual([]);
+    expect(o.warnings).toEqual([]);
     expect(o.items.flatMap((i) => i.people)).not.toContain("Hyacinth");
   });
   it("without the caller's fields the same note holds both people and asks the manager who it refers to", () => {
@@ -35,7 +38,7 @@ describe("due items", () => {
     expect(kinds(raw)[0]).toBe("removal_requests");
     expect(raw.items[0].title).toBe("Action 1 removal or opt-out request (1 need you to confirm who they refer to)");
     expect(raw.stats).toMatchObject({ opted_out: 2, needs_review: 1 });
-    expect(raw.needs_review).toEqual([expect.objectContaining({ row: 6, intro_id: "7", requester: "Wendell", target: "Hyacinth", needs_review: true })]);
+    expect(raw.needs_review).toEqual([expect.objectContaining({ row: 6, intro_id: "7", requester: "Wendell", target: "Hyacinth", needs_review: true, fields: { opted_out: null, removal_request: null } })]);
     expect(raw.needs_review[0].signals).toEqual(expect.arrayContaining(["asked_removed", "opt_out"]));
   });
   it("puts an unactioned removal request first", () => {
@@ -105,6 +108,14 @@ describe("spacing across the plan", () => {
     expect(() => planWeek({ ...base, ledger: [{ requester: "A", target: "B", opted_out: "yes" }] })).toThrow(/ledger\[0\]\.opted_out must be requester, target, both or none/);
     expect(() => planWeek({ ...base, ledger: [{ requester: "A", target: "B", removal_request: "target " }] })).not.toThrow();
   });
+  it("accepts the party fields in any case, in the tool schema and in the planner (final-round 7)", () => {
+    const parsed = z.object(planShape).parse({ today: "2026-10-02", ledger: [{ requester: "A B", target: "C D", opted_out: " Target ", removal_request: "NONE" }] });
+    expect(parsed.ledger?.[0]).toMatchObject({ opted_out: "target", removal_request: "none" });
+    expect(z.object(planShape).safeParse({ today: "2026-10-02", ledger: [{ requester: "A B", target: "C D", opted_out: "yes" }] }).success).toBe(false);
+    const o = planWeek({ ...base, ledger: [{ intro_id: "r", requester: "A B", target: "C D", status: "asked", asked_on: "2026-09-01", opted_out: "Target", removal_request: "BOTH" }] });
+    expect(o.stats).toMatchObject({ opted_out: 2, needs_review: 0 });
+    expect(o.items.find((i) => i.kind === "lapse_notices")).toBeUndefined();
+  });
 });
 
 const textOf = (o: ReturnType<typeof planWeek>) => o.items.map((i) => [i.title, i.why_now, i.suggested_prompt, ...i.people].join(" | ")).join("\n");
@@ -115,13 +126,13 @@ describe("who opted out: the caller's fields decide; otherwise both people are h
   const welcomed = (requester: string, target: string, row: Partial<PlanLedgerRow>) => plan(requester, target, row).items.find((i) => i.kind === "welcomes")?.people ?? [];
   const R = "Odalys Fenwick", T = "Saoirse Delacroix-Burke";
   const out = (notes: string, row: Partial<PlanLedgerRow> = {}) => welcomed(R, T, { notes, ...row });
-  it("holds exactly the side the caller names, whatever the note says", () => {
+  it("holds exactly the side the caller names when the note agrees with the fields", () => {
     expect(out("Requester opted out", { opted_out: "requester" })).toEqual([T]);
     expect(out("Target unsubscribed", { opted_out: "target" })).toEqual([R]);
     expect(out("Delacroix-Burke said don't contact again", { opted_out: "target" })).toEqual([R]);
     expect(out("DNC", { opted_out: "both" })).toEqual([]);
     expect(out("Both said yes", { opted_out: "none" })).toEqual([R, T]);
-    expect(out("Odalys Fenwick opted out of the newsletter only; intros welcome", { opted_out: "none", removal_request: "none" })).toEqual([R, T]);
+    expect(out("Both said yes", { opted_out: "none", removal_request: "none" })).toEqual([R, T]);
     const o = plan(R, T, { notes: "Target unsubscribed", opted_out: "target" });
     expect(o.needs_review).toEqual([]);
     expect(o.held.find((h) => h.type === "touch")).toMatchObject({ person: T, reason: "opted out (ledger r1)" });
@@ -145,14 +156,14 @@ describe("who opted out: the caller's fields decide; otherwise both people are h
       expect(o.needs_review[0].signals.length, notes).toBeGreaterThan(0);
       expect(JSON.stringify(o.needs_review), notes).not.toContain("told"); // rule ids only, never the note
       expect(kinds(o)[0], notes).toBe("removal_requests");
-      for (const h of o.held.filter((x) => x.type === "touch")) expect(h.reason, notes).toBe(`${UNCLEAR_OPT_OUT} (ledger r1; both people are held until you do)`);
+      for (const h of o.held.filter((x) => x.type === "touch")) expect(h.reason, notes).toBe(`${UNCLEAR_OPT_OUT} (ledger r1; the note doesn't say who, so both people are held until you do)`);
     }
   });
   it("says why in the text summary and lists the row to confirm", () => {
     const o = plan(R, T, { notes: "Fenwick told Saoirse she had opted out" });
     const text = summarisePlan(o);
     expect(text).toContain(`Held, ${UNCLEAR_OPT_OUT}: ${R}, ${T}.`);
-    expect(text).toContain(`Ledger rows to confirm (the note records an opt-out or removal request but not who it refers to; both people are held): r1 (${R} → ${T})`);
+    expect(text).toContain(`Ledger rows to confirm (the note records an opt-out or removal request but not who it refers to, or disagrees with the fields; both people are held): r1 (${R} → ${T})`);
     expect(text).not.toMatch(/Not contacted \(opted out\)/);
     expect(o.items[0].why_now).toBe("Removal and opt-out requests are honoured immediately. One note does not say which person opted out, so both people in that intro are held until you confirm.");
     expect(o.items[0].suggested_prompt).toBe("Action the removal and opt-out requests in my ledger (r1) and tell me who the opt-out note on r1 refers to, and note them");
@@ -164,15 +175,63 @@ describe("who opted out: the caller's fields decide; otherwise both people are h
   });
 });
 
+describe("the note is checked against the fields (final-round 3)", () => {
+  const plan = (notes: string, row: Partial<PlanLedgerRow>) =>
+    planWeek({ ...base, ledger: [{ intro_id: "r1", requester: "Ann Lee", target: "Bo Chan", status: "withdrawn", notes, ...row }], new_members: [{ name: "Ann Lee", joined: "2026-09-20" }, { name: "Bo Chan", joined: "2026-09-21" }] });
+  const heldPeople = (o: ReturnType<typeof planWeek>) => o.held.filter((h) => h.type === "touch").map((h) => h.person).sort();
+  it("a removal request for a party is also an opt-out for that party", () => {
+    const o = plan("Asked us to delete all my data", { removal_request: "target", opted_out: "none" });
+    expect(heldPeople(o)).toEqual(["Bo Chan"]);
+    expect(o.needs_review).toEqual([]);
+    expect(o.held[0].reason).toBe("opted out (ledger r1)");
+    expect(heldPeople(plan("Asked us to delete all my data", { removal_request: "target" }))).toEqual(["Bo Chan"]);
+    expect(heldPeople(plan("Requester opted out; target asked for the notes to be deleted", { opted_out: "requester", removal_request: "target" }))).toEqual(["Ann Lee", "Bo Chan"]);
+  });
+  it("a defaulted none never beats the note: fields that deny what the note says hold both people and flag the disagreement", () => {
+    for (const [notes, row] of [
+      ["DNC", { opted_out: "none", removal_request: "none" }], ["Bo opted out of the newsletter only; intros fine", { opted_out: "none" }],
+      ["does not wish to be contacted", { opted_out: "none", removal_request: "none" }], ["2026-09-30 removal request: project details, do not use", { opted_out: "target", removal_request: "none" }],
+      ["DNC; delete her notes", { opted_out: "both", removal_request: "none" }],
+    ] as [string, Partial<PlanLedgerRow>][]) {
+      const o = plan(notes, row);
+      expect(heldPeople(o), notes).toEqual(["Ann Lee", "Bo Chan"]);
+      expect(o.needs_review, notes).toEqual([expect.objectContaining({ intro_id: "r1", reason: expect.stringMatching(/^note and fields disagree/), fields: { opted_out: row.opted_out ?? null, removal_request: row.removal_request ?? null } })]);
+      expect(o.held[0].reason, notes).toBe(`${UNCLEAR_OPT_OUT} (ledger r1; the note and the fields disagree, so both people are held until you do)`);
+      expect(kinds(o)[0], notes).toBe("removal_requests");
+      expect(summarisePlan(o), notes).toContain("r1 (Ann Lee → Bo Chan; note and fields disagree)");
+    }
+  });
+  it("a field left open is decided by the note, which never names a person: both are held", () => {
+    const open = plan("Target opted out; also asked us to delete her notes", { opted_out: "target" }); // removal_request missing, note has removal wording
+    expect(heldPeople(open)).toEqual(["Ann Lee", "Bo Chan"]);
+    expect(open.needs_review[0].reason).toMatch(/without saying who/);
+    const onlyRemoval = plan("DNC", { removal_request: "none" }); // opted_out missing, note has opt-out wording
+    expect(heldPeople(onlyRemoval)).toEqual(["Ann Lee", "Bo Chan"]);
+    expect(onlyRemoval.needs_review[0].reason).toMatch(/without saying who/);
+  });
+  it("fields that agree with the note stand, and an honoured request is not re-actioned", () => {
+    const o = plan("Target asked on 2026-08-22 to be removed from all intro requests and outreach; opt-out honoured", { opted_out: "target", removal_request: "none" });
+    expect(heldPeople(o)).toEqual(["Bo Chan"]);
+    expect(o.needs_review).toEqual([]);
+    expect(kinds(o)).not.toContain("removal_requests");
+    const r = plan("2026-09-30 removal request: project details, do not use", { removal_request: "target", opted_out: "none" });
+    expect(heldPeople(r)).toEqual(["Bo Chan"]);
+    expect(r.needs_review).toEqual([]);
+    expect(kinds(r)[0]).toBe("removal_requests");
+    expect(kinds(plan("2026-09-30 removal request: project details, do not use; honoured 2026-10-01", { removal_request: "target", opted_out: "none" }))).not.toContain("removal_requests");
+  });
+});
+
 describe("opt-out and removal phrasing (round-3 3)", () => {
   const plan = (notes: string, row: Partial<PlanLedgerRow> = {}) => planWeek({ ...base, ledger: [{ intro_id: "r1", requester: "Ann Lee", target: "Bo Chan", status: "asked", asked_on: "2026-10-01", notes, ...row }], new_members: [{ name: "Bo Chan", joined: "2026-09-25" }] });
   const heldBoth = (notes: string) => plan(notes).stats.opted_out === 2 && plan(notes).needs_review.length === 1;
   const nothing = (notes: string) => { const o = plan(notes); return o.stats.opted_out === 0 && o.needs_review.length === 0 && !kinds(o).includes("removal_requests"); };
   it("recognises opt-outs of messages: both people are held and the row is listed", () => {
-    for (const n of ["Bo opted out", "Bo opted-out on 3 Oct", "Bo: opt out", "unsubscribe Bo", "Bo unsubscribed", "DNC", "Bo: do not contact", "Bo asked: don’t contact me",
+    for (const n of ["Bo opted out", "Bo opted-out on 3 Oct", "Bo: opt out", "unsubscribe Bo", "Bo unsubscribed", "DNC", "D.N.C.", "Bo: do not contact", "Bo asked: don’t contact me",
       "Bo asked to delete my data", "Bo wants to be forgotten", "right to be forgotten (Bo)", "Bo asked to be removed from intros", "Bo withdrew consent", "no more intros for Bo",
       "No longer interested — DNC", "Never again — DNC", "Not a fit (DNC)", "No reply and unsubscribed", "doesn't want to be contacted", "Bo does not want to be contacted",
-      "stop messaging", "stop contacting her", "no more messages", "remove me", "delete my details", "delete my information", "forget me", "GDPR erasure request", "GDPR removal"]) {
+      "stop messaging", "stop contacting her", "no more messages", "remove me", "delete my details", "delete my information", "forget me", "GDPR erasure request", "GDPR removal",
+      "does not wish to be contacted", "asked to not be contacted", "should not be contacted", "don't reach out", "unsubbed", "replied STOP", "reported as spam"]) {
       expect(heldBoth(n), n).toBe(true);
       expect(kinds(plan(n))[0], n).toBe("removal_requests");
     }
@@ -183,19 +242,6 @@ describe("opt-out and removal phrasing (round-3 3)", () => {
       expect(heldBoth(n), n).toBe(true);
       expect(kinds(plan(n))[0], n).toBe("removal_requests");
     }
-  });
-  it("with the caller's fields, a removal of information is a removal item and not an opt-out", () => {
-    const o = plan("2026-09-30 removal request: project details, do not use", { removal_request: "target", opted_out: "none" });
-    expect(kinds(o)[0]).toBe("removal_requests");
-    expect(o.items[0].title).toBe("Action 1 removal or opt-out request");
-    expect(o.stats).toMatchObject({ opted_out: 0, needs_review: 0 });
-    expect(o.held.filter((h) => h.type === "touch" && /opt/.test(h.reason))).toEqual([]); // Bo's welcome moves for spacing (asked yesterday), never for an opt-out
-    expect(kinds(plan("2026-09-30 removal request: project details, do not use; honoured 2026-10-01", { removal_request: "target", opted_out: "none" }))).not.toContain("removal_requests");
-    const done = plan("Target asked to be removed; opt-out honoured", { opted_out: "target" });
-    expect(kinds(done)).not.toContain("removal_requests");
-    expect(done.stats.opted_out).toBe(1);
-    // "none" on both is authoritative even over clear wording
-    expect(nothing("Bo opted out") || plan("Bo opted out", { opted_out: "none", removal_request: "none" }).stats.opted_out === 0).toBe(true);
   });
   it("a negation cancels only the phrase it directly precedes, for the listed forms", () => {
     for (const n of ["Don't forget her for the dinner", "Do not forget to send the deck", "Bo did not opt out", "Bo never unsubscribed", "Bo hasn't opted out yet", "Bo has not unsubscribed",
@@ -208,7 +254,8 @@ describe("opt-out and removal phrasing (round-3 3)", () => {
   it("does not read ordinary notes as opt-outs", () => {
     for (const n of ["Both said yes; requester did not send the first message", "Declined: no capacity this quarter", "No reply after 4 days; lapse notice sent", "Morning-after follow-up unanswered",
       "Queued, not yet sent", "No contact details on file yet", "Forgot to send the deck", "She took notes at the dinner", "Dropped me a message afterwards", "Will take the intro in October",
-      "Remove the duplicate record in HubSpot"]) expect(nothing(n), n).toBe(true);
+      "Remove the duplicate record in HubSpot", "Met at dinner, keen to follow up on hiring", "Prefers email to WhatsApp", "Sent the deck", "No reply to my email after 4 days",
+      "Did not call back; try again Thursday", "Stopped replying to messages in August", "Never contacted; start with a welcome"]) expect(nothing(n), n).toBe(true);
   });
 });
 
@@ -229,6 +276,27 @@ describe("one identity across inputs (review finding 3c)", () => {
     // two different non-Latin names are two people, never one empty key
     const two = planWeek({ ...base, new_members: [{ name: "李明", joined: "2026-09-25" }, { name: "王芳", joined: "2026-09-26" }, { name: "☺", joined: "2026-09-27" }], planned_touches: [{ person: "王芳", date: "2026-10-01" }] });
     expect(two.items.find((i) => i.kind === "welcomes")?.people).toEqual(["李明", "☺"]);
+  });
+  it("a spaced CJK name, a one-letter name or a symbol in a name field is the same person as the bare string in every other input (final-round 1)", () => {
+    const ledger: PlanLedgerRow[] = [
+      { intro_id: "w", requester: "王 芳", target: "Priya Nandakumar", status: "withdrawn", notes: "Requester opted out", opted_out: "requester" },
+      { intro_id: "l", requester: "李", target: "Kasper Olufsen", status: "withdrawn", notes: "Requester opted out", opted_out: "requester" },
+      { intro_id: "s", requester: "☺", target: "Ulrich Amadi", status: "withdrawn", notes: "Requester opted out", opted_out: "requester" },
+      { intro_id: "k", requester: "Søren Kierkegaard", target: "Esme Thackeray", status: "withdrawn", notes: "Requester opted out", opted_out: "requester" },
+    ];
+    const o = planWeek({ ...base, ledger,
+      new_members: [{ name: "王  芳", joined: "2026-09-25" }, { name: "李", joined: "2026-09-25" }, { name: "☺", joined: "2026-09-25" }, { name: "Soren Kierkegaard", joined: "2026-09-25" }, { name: "Ulrich Amadi", joined: "2026-09-26" }],
+      events: [{ name: "Dinner", starts_at: "2026-10-13", invitations_sent: false, people: [{ name: "王 芳" }, "李", { id: "m_smile", name: "☺" }, "Søren Kierkegaard", "Priya Nandakumar"] }],
+      segments: [{ id: "m_wang", name: "王 芳", segment: "dark" }, { id: "m_li", name: "李", segment: "dark" }, { id: "Kasper Olufsen", segment: "dark" }],
+      planned_touches: [{ person: "王 芳", date: "2026-10-01" }] });
+    expect(o.items.find((i) => i.kind === "welcomes")?.people).toEqual(["Ulrich Amadi"]);
+    expect(o.items.find((i) => i.kind === "event_invitations")?.people).toEqual(["Priya Nandakumar"]);
+    expect(o.items.find((i) => i.kind === "reengagement_batch")?.people).toEqual(["Kasper Olufsen"]);
+    expect(o.stats.opted_out).toBe(4);
+    expect(textOf(o)).not.toMatch(/王|李|☺|S[øo]ren/);
+    // Latin initials stay placeholders: two "J S" entries are not one person
+    const initials = planWeek({ ...base, ledger: [{ intro_id: "j", requester: "J S", target: "Priya Nandakumar", status: "withdrawn", opted_out: "requester" }], new_members: [{ name: "J. S.", joined: "2026-09-25" }] });
+    expect(initials.items.find((i) => i.kind === "welcomes")?.people).toEqual(["J. S."]);
   });
   it("a touch already planned under a member_id spaces the welcome planned by name", () => {
     const o = planWeek({ ...base, new_members: [{ id: "m_kasper0001", name: "Kasper Olufsen", joined: "2026-09-20" }, { name: "Ulrich Amadi", joined: "2026-09-29" }],
@@ -289,7 +357,7 @@ describe("item text written after the spacing and opt-out check (review finding 
   });
 });
 
-describe("scale (round-2 2)", () => {
+describe("scale (round-2 2, final-round 6)", () => {
   it("5,000 accepted intros noted DNC (10,000 people held, 5,000 rows to confirm) plan in well under 1 s", () => {
     const ledger = Array.from({ length: 5000 }, (_v, i) => ({ intro_id: `i${i}`, requester: `Asker${i} Person`, target: `Target${i} Person`, status: "accepted", answered_on: "2026-08-01", notes: "DNC" }));
     const t0 = performance.now();
@@ -300,6 +368,17 @@ describe("scale (round-2 2)", () => {
     expect(o.held.filter((h) => h.type === "touch")).toHaveLength(10000);
     expect(o.held.find((h) => h.person === "Target4999 Person")?.intro_ids).toEqual(["i4999"]);
     expect(summarisePlan(o)).toMatch(/… 4980 more in the structured result/);
+  });
+  it("2 MB of adversarial notes (1,000 rows of 2,000 characters) plans in under 1.5 s and reports the truncated notes", () => {
+    const shapes = ["a.".repeat(1000), Array.from({ length: 250 }, (_v, i) => `dnc${i} x`).join(","), "no email ".repeat(222), "Zebedee asked not to be contacted; ".repeat(57)];
+    const ledger = Array.from({ length: 1000 }, (_v, i) => ({ intro_id: `n${i}`, requester: `Asker${i} Person`, target: `Target${i} Person`, status: "accepted", answered_on: "2026-08-01", notes: shapes[i % shapes.length] }));
+    expect(JSON.stringify(ledger).length).toBeGreaterThan(2_000_000);
+    const t0 = performance.now();
+    const o = planWeek({ ...base, ledger });
+    expect(performance.now() - t0).toBeLessThan(1500);
+    expect(o.warnings).toEqual([expect.stringMatching(/^250 ledger note\(s\) were longer than 10000 characters or 500 clauses; only the first part was read/)]);
+    expect(o.stats.needs_review).toBe(500); // "no email" and "asked not to be contacted" are refusals; "a." and "dnc0 x" carry no signal
+    expect(summarisePlan(o)).toMatch(/Note: 250 ledger note\(s\)/);
   });
 });
 

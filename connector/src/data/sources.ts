@@ -20,6 +20,16 @@ export const SOURCE_KINDS: Readonly<Record<string, SourceKind>> = {
   linkedin: "other",
 };
 
+/**
+ * Source words that say what kind of thing a source is, not which platform ("chat", "csv", "form"). As an ID
+ * prefix they are generic: the record's source still decides whether the ID is a contact detail.
+ */
+export const GENERIC_SOURCE_WORDS: readonly string[] = [
+  "crm", "form", "forms", "application", "applications", "survey", "registration", "notes", "note", "meeting-notes", "transcript", "sheet", "sheets",
+  "spreadsheet", "excel", "csv", "directory", "manual", "email", "newsletter", "event", "events", "chat", "community", "export", "file", "list", "group",
+  "id", "ids", "ref", "data", "db", "database", "import", "contacts", "members", "people", "users", "record", "records",
+];
+
 /** Default precedence (first wins) for identity, organisation, role, location and status. */
 export const IDENTITY_PRECEDENCE: readonly SourceKind[] = ["crm", "form", "sheet", "email", "event", "notes", "chat", "other"];
 /** Default precedence for asks and offers (chat-derived stays inferred). */

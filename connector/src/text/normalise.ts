@@ -8,11 +8,17 @@ import { DOMAIN_ALIASES, DOTLESS_DOMAINS, PERSONAL_EMAIL_DOMAINS, ROLE_LOCAL_PAR
 import { SENSITIVE_TERMS } from "../data/sensitive-terms.js";
 import { NICKNAME_GROUPS } from "../data/people.js";
 
+/** Latin letters that have no decomposition but one plain spelling: "Søren" = "Soren", "Straße" = "Strasse". */
+const LETTER_FOLDS: Readonly<Record<string, string>> = { ł: "l", ø: "o", đ: "d", ð: "d", þ: "th", ß: "ss", æ: "ae", œ: "oe", ı: "i", ħ: "h", ŧ: "t", ŋ: "n", ĸ: "k", ƶ: "z" };
+const LETTER_FOLD_RE = new RegExp(`[${Object.keys(LETTER_FOLDS).join("")}]`, "g");
+
 /**
  * Lowercase; strip accents from Latin letters only ("Zoë" → "zoe"), since in other scripts a mark can be part
- * of the letter ("й" is not "и"). Compatibility decomposition first, so ligatures and full-width forms fold too.
+ * of the letter ("й" is not "и"); join the Latin letters above to their plain spelling. Compatibility
+ * decomposition first, so ligatures and full-width forms fold too.
  */
-export const fold = (s: string): string => s.normalize("NFKD").replace(/([A-Za-z])[̀-ͯ]+/g, "$1").normalize("NFC").toLowerCase();
+export const fold = (s: string): string =>
+  s.normalize("NFKD").replace(/([A-Za-z])[̀-ͯ]+/g, "$1").normalize("NFC").toLowerCase().replace(LETTER_FOLD_RE, (c) => LETTER_FOLDS[c]);
 
 /** Apostrophes in every common form; dropped (not turned into spaces) so "O'Brien" and "OBrien" normalise alike. */
 export const APOSTROPHES = /['’‘`´ʼʻ]/g;
@@ -233,12 +239,22 @@ export function idContactKind(value: string, opts: { labels?: readonly string[];
 }
 
 const placeholderNames = new Set(PLACEHOLDER_NAMES), placeholderTokens = new Set(PLACEHOLDER_TOKENS);
-/** A name key that identifies nobody: empty, "unknown", "n/a", "test", single letters or initials only, numbers. */
+/**
+ * A name key that identifies nobody: empty, "unknown", "n/a", "test", Latin initials only ("j s"), numbers.
+ * A single character of another script is a name ("王 芳", "李").
+ */
 export function isPlaceholderName(key: string): boolean {
   if (!key) return true;
   if (placeholderNames.has(key)) return true;
-  return key.split(" ").every((t) => t.length === 1 || /^\d+$/.test(t) || placeholderTokens.has(t));
+  return key.split(" ").every((t) => /^[a-z]$/.test(t) || /^\d+$/.test(t) || placeholderTokens.has(t));
 }
+
+/**
+ * Exact-string identity key: NFKC, whitespace collapsed, case-folded, nothing else removed. The fallback
+ * that lets the same string name the same person in every input even when `nameKey` has nothing to say
+ * ("☺", a one-letter name) — but never for a placeholder name such as "Unknown".
+ */
+export const exactKey = (s: string): string => s.normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
 
 /** Remove email addresses, phone numbers and WhatsApp links from free text. */
 export function scrubContacts(text: string): { text: string; removed: number } {

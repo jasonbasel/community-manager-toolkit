@@ -5,11 +5,11 @@
  */
 import { createHash } from "node:crypto";
 import {
-  ASKS_PRECEDENCE, DEACTIVATED_VALUES, IDENTITY_PRECEDENCE, OPT_IN_NO, OPT_IN_YES, SOURCE_KINDS, STATUS_VALUES, type SourceKind,
+  ASKS_PRECEDENCE, DEACTIVATED_VALUES, GENERIC_SOURCE_WORDS, IDENTITY_PRECEDENCE, OPT_IN_NO, OPT_IN_YES, SOURCE_KINDS, STATUS_VALUES, type SourceKind,
 } from "../data/sources.js";
 import {
-  cmp, daysBetween, displayOrg, emailParts, findSensitive, firstNameRelation, fold, hasSensitive, idContactKind, isEmailLike, isHandleLabel, isPhoneLabel, isPhoneLike, isUrlLike,
-  isPlaceholderName, jaroWinkler, nameKey, orgKey, parseDate, plain, scrubContacts, tidyName, toList, todayIso, type DateOrder, type EmailParts,
+  cmp, daysBetween, displayOrg, emailParts, findPhones, findSensitive, firstNameRelation, fold, hasSensitive, idContactKind, isEmailLike, isHandleLabel, isPhoneLabel, isPhoneLike,
+  isUrlLike, isPlaceholderName, jaroWinkler, nameKey, orgKey, parseDate, plain, scrubContacts, tidyName, toList, todayIso, type DateOrder, type EmailParts,
 } from "../text/normalise.js";
 import { InputError } from "./errors.js";
 
@@ -73,6 +73,20 @@ export function sourceKind(label: string): SourceKind {
   for (const part of label.split(/[-.]/)) if (SOURCE_KINDS[part]) return SOURCE_KINDS[part];
   return "other";
 }
+const genericSourceWords = new Set(GENERIC_SOURCE_WORDS);
+/** An ID prefix that names a platform or channel ("slack", "wa", "linkedin"), not a generic kind word ("chat", "csv", "file"). */
+const isPlatformPrefix = (prefix: string) => {
+  const label = sourceLabel(prefix);
+  return isPhoneLabel(prefix) || isHandleLabel(prefix) || (sourceKind(label) !== "other" && !genericSourceWords.has(label) && !label.split(/[-.]/).every((p) => genericSourceWords.has(p)));
+};
+/** A YYYYMMDD stamp in a label ("members-20260930") is a date, not a phone number. */
+const DATE_STAMP = /^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/;
+/**
+ * A source label (or ID prefix) that carries a contact detail: an email, link or phone shape anywhere in it, or a run of
+ * seven or more digits ("whatsapp-447700900311") that is not a date stamp. Such a label is never echoed.
+ */
+export const labelHasContact = (label: string): boolean =>
+  !!idContactKind(label) || findPhones(label).length > 0 || (label.match(/\d{7,}/g) ?? []).some((run) => !DATE_STAMP.test(run));
 
 function optIn(v: unknown): "yes" | "no" | "unknown" | null {
   if (v === true) return "yes";
@@ -128,8 +142,8 @@ export function mergeMemberRecords(input: MergeInput) {
 
   // ---- 1. prepare ----
   const recs: Prep[] = input.records.map((r, i) => {
-    // A source label that is itself a contact detail would be echoed in source_ids and by_source.
-    const unsafeSource = !!idContactKind(String(r.source ?? ""));
+    // A source label that carries a contact detail ("+44 7700 900999", "whatsapp-447700900311") would be echoed in source_ids and by_source.
+    const unsafeSource = labelHasContact(String(r.source ?? ""));
     if (unsafeSource) unsafeSources++;
     const source = unsafeSource ? "unknown" : sourceLabel(r.source);
     const kind = sourceKind(source);
@@ -156,12 +170,12 @@ export function mergeMemberRecords(input: MergeInput) {
       const colon = /^urn:/i.test(s) ? -1 : s.indexOf(":");
       const prefix = colon > 0 ? s.slice(0, colon) : "", value = colon >= 0 ? s.slice(colon + 1) : s;
       // A prefix that names a platform or a channel ("wa:", "phone_number:", "linkedin:", "slack:") is judged on its own; any other ID
-      // (no prefix, or a generic one such as "id:") is judged by the record's source label as well, so every ID of a "WhatsApp export"
-      // or "sms" record is dropped. Labels are matched as whole words, never a country-code guess. The whole entry is checked for
-      // emails and links (they contain ":").
-      const own = !!prefix && (isPhoneLabel(prefix) || isHandleLabel(prefix) || sourceKind(sourceLabel(prefix)) !== "other" || sourceLabel(prefix) === source);
+      // (no prefix, or a generic one such as "id:", "chat:", "csv:") is judged by the record's source label as well, so every ID of a
+      // "WhatsApp export" or "sms" record is dropped. Labels are matched as whole words, never a country-code guess. The whole entry is
+      // checked for emails and links (they contain ":"), and a prefix carrying a contact detail drops the ID too.
+      const own = !!prefix && (isPlatformPrefix(prefix) || sourceLabel(prefix) === source);
       const labels = own ? [prefix] : [prefix, source].filter(Boolean);
-      if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { labels, handles: true }) || (prefix && idContactKind(prefix))) { dropped = true; return; }
+      if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { labels, handles: true }) || (prefix && labelHasContact(prefix))) { dropped = true; return; }
       ids.push(colon >= 0 && (listed || own) ? s : `${source}:${s}`);
     };
     addId(r.source_id, false);

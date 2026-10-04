@@ -12,12 +12,15 @@
  * written after the spacing and opt-out check: it never names someone who opted out, and its
  * prompt lists only the people still in it.
  * Opt-outs and removal requests in ledger notes (guardrails §12): the caller has read the note and
- * sets `opted_out` and `removal_request` to requester | target | both | none; those are authoritative.
- * Without them the server never guesses from names: any opt-out or removal wording in the note holds
- * BOTH people of the row, flags the row in `needs_review`, and asks the manager to confirm who it
- * refers to. A false positive holds two people for a week; a false negative would drop an opt-out.
+ * sets `opted_out` and `removal_request` to requester | target | both | none; a removal request for a
+ * party is also an opt-out for that party. The server never guesses from names: when a field is left
+ * open and the note has wording for it, or when the fields deny what the note says ("none" against
+ * "DNC"), it holds BOTH people of the row, flags the row in `needs_review`, and asks the manager to
+ * confirm who it refers to. A false positive holds two people for a week; a false negative would drop
+ * an opt-out.
  */
-import { addDays, cmp, daysBetween, isPlaceholderName, nameKey, parseDate, parseInstant } from "../text/normalise.js";
+import { addDays, cmp, daysBetween, exactKey, isPlaceholderName, nameKey, parseDate, parseInstant } from "../text/normalise.js";
+import { MAX_NOTE_CHARS, MAX_NOTE_CLAUSES } from "../data/consent-signals.js";
 import { findConsentSignals, isActioned } from "../text/consent.js";
 import { InputError } from "./errors.js";
 import { nextAllowed, optInValue } from "./segment.js";
@@ -48,12 +51,15 @@ export interface PlanInput {
 export interface PlanItem {
   priority: number; kind: string; title: string; why_now: string; people: string[]; due: string; suggested_prompt: string; intro_ids?: string[];
 }
-/** A ledger row whose note records an opt-out or removal request without saying who it refers to. */
+/** A ledger row whose note records an opt-out or removal request without saying who it refers to, or that contradicts the fields. */
 export interface ReviewRow {
   row: number; intro_id: string | null; requester: string; target: string; needs_review: true;
   /** Ids of the wording rules that fired (never the note text). */
   signals: string[]; reason: string;
+  /** The caller's fields as given (null when missing). */
+  fields: { opted_out: Party | null; removal_request: Party | null };
 }
+type Side = "requester" | "target";
 
 /** Held because the note doesn't say who opted out: the reason every such hold starts with (summaries key on it). */
 export const UNCLEAR_OPT_OUT = "opt-out note found — confirm who it refers to";
@@ -66,12 +72,13 @@ const st = (r: PlanLedgerRow) => String(r.status ?? "").trim().toLowerCase();
 const outcomeUnknown = (r: PlanLedgerRow) => { const o = String(r.outcome ?? "").trim().toLowerCase(); return !o || o === "unknown" || o === "not yet"; };
 /** A caller-set party, or undefined when missing or not one of the four values (then the note decides, conservatively). */
 const party = (v: unknown): Party | undefined => { const s = String(v ?? "").trim().toLowerCase(); return (PARTIES as readonly string[]).includes(s) ? (s as Party) : undefined; };
+const sides = (p: Party | undefined): Side[] => (p === "both" ? ["requester", "target"] : p === "requester" || p === "target" ? [p] : []);
 
 /**
  * One identity per person: ids ("i:…") and normalised names ("n:…") are joined whenever one
- * reference carries both, or a bare string (which may be either) is used. Placeholder names
- * ("Unknown", initials) never join anyone, and a name is only ever a key when it normalises to
- * something (non-Latin names keep their letters; punctuation-only names get an identity of their own).
+ * reference carries both, or a bare string (which may be either) is used. Every name also carries its
+ * exact-string key (NFKC, case-folded), so "王 芳" or "☺" in a `name` field is the same person as the
+ * bare "王 芳" in a ledger row. Placeholder names ("Unknown", Latin initials) never join anyone.
  */
 class People {
   private parent = new Map<string, string>();
@@ -101,9 +108,11 @@ class People {
   }
   private keys(id: string, name: string, bare: string): { k: string; rank: number; label: string }[] {
     const out: { k: string; rank: number; label: string }[] = [];
-    const idKey = (s: string) => `i:${s.replace(/\s+/g, " ").toLowerCase()}`;
+    const idKey = (s: string) => `i:${exactKey(s)}`;
     const nk = (s: string) => { const k = nameKey(s); return k && !isPlaceholderName(k) ? `n:${k}` : ""; };
-    if (name && nk(name)) out.push({ k: nk(name), rank: 0, label: name });
+    // A placeholder word ("Unknown", "J S") is never a key in any form; a name that normalises to nothing ("☺") still has its exact key.
+    const placeholder = (s: string) => { const k = nameKey(s); return !!k && isPlaceholderName(k); };
+    if (name && !placeholder(name)) { if (nk(name)) out.push({ k: nk(name), rank: 0, label: name }); out.push({ k: idKey(name), rank: 0, label: name }); }
     if (bare) { out.push({ k: idKey(bare), rank: /\s/.test(bare) ? 1 : 2, label: bare }); if (nk(bare)) out.push({ k: nk(bare), rank: /\s/.test(bare) ? 1 : 2, label: bare }); }
     if (id) out.push({ k: idKey(id), rank: 3, label: id });
     return out;
@@ -164,27 +173,39 @@ export function planWeek(input: PlanInput) {
   const markOut = (root: string, reason: string) => { const k = R(root); if (!optedOut.has(k)) optedOut.set(k, reason); };
   const removals: { r: PlanLedgerRow; unclear: boolean }[] = [];
   const needs_review: ReviewRow[] = [];
+  const warnings: string[] = [];
+  let truncatedNotes = 0;
+  const UNSAID = "the note records an opt-out or removal request without saying who it refers to; both people are held until you confirm";
+  const DISAGREE = "note and fields disagree: the note records a request the fields say did not happen; both people are held until you confirm";
   rows.forEach(({ r, req, tgt }, i) => {
     const note = String(r.notes ?? "");
     const outField = party(r.opted_out), remField = party(r.removal_request);
-    // The note is read only for the fields the caller did not set; it is never attributed to a person by name.
-    const sig = outField === undefined || remField === undefined ? findConsentSignals(note) : { opt_out: [], removal: [] };
-    const signalled = sig.opt_out.length > 0 || sig.removal.length > 0;
-    const who: Party = outField ?? (signalled ? "both" : "none");
-    const unclear = outField === undefined && signalled;
-    const removal = remField !== undefined ? remField !== "none" : signalled;
+    // The note is always read (never attributed to a person by name): it decides what the fields leave open, and it is checked against them.
+    const sig = findConsentSignals(note);
+    if (sig.truncated) truncatedNotes++;
+    const optOutSignal = sig.opt_out.length > 0, removalSignal = sig.removal.length > 0;
+    // A removal request for a party is also an opt-out for that party: nothing proactive goes to someone who asked to be forgotten.
+    const named = new Set<Side>([...sides(outField), ...sides(remField)]);
+    const optOutKnown = outField !== undefined || named.size > 0;
+    let hold: Side[] = [...named], review: string | null = null;
+    if (!optOutKnown && remField === undefined) {
+      if (optOutSignal || removalSignal) { hold = ["requester", "target"]; review = UNSAID; }
+    } else if ((optOutKnown && named.size === 0 && optOutSignal) || (remField === "none" && removalSignal)) {
+      hold = ["requester", "target"]; review = DISAGREE; // the fields deny what the note says: keep them, hold both, flag the row
+    } else if ((!optOutKnown && optOutSignal) || (remField === undefined && removalSignal)) {
+      hold = ["requester", "target"]; review = UNSAID; // one field left open, and the note has wording for it
+    }
     const where = `ledger ${r.intro_id ?? `row ${i + 1}`}`;
-    if (unclear) needs_review.push({
-      row: i, intro_id: r.intro_id ?? null, requester: r.requester!, target: r.target!, needs_review: true, signals: [...sig.opt_out, ...sig.removal],
-      reason: "the note records an opt-out or removal request without saying who it refers to; both people are held until you confirm",
+    if (review) needs_review.push({
+      row: i, intro_id: r.intro_id ?? null, requester: r.requester!, target: r.target!, needs_review: true, signals: [...sig.opt_out, ...sig.removal], reason: review,
+      fields: { opted_out: outField ?? null, removal_request: remField ?? null },
     });
     // Anything still to action: an open request, or a request whose subject the manager must confirm (even if the note says it was honoured).
-    if ((removal || who !== "none") && (unclear || !isActioned(note))) removals.push({ r, unclear });
-    if (who === "none") return;
-    const reason = unclear ? `${UNCLEAR_OPT_OUT} (${where}; both people are held until you do)` : `opted out (${where})`;
-    if (who !== "target") markOut(req, reason);
-    if (who !== "requester") markOut(tgt, reason);
+    if ((hold.length || optOutSignal || removalSignal) && (review || !isActioned(note))) removals.push({ r, unclear: !!review });
+    const reason = review ? `${UNCLEAR_OPT_OUT} (${where}; ${review === DISAGREE ? "the note and the fields disagree" : "the note doesn't say who"}, so both people are held until you do)` : `opted out (${where})`;
+    for (const side of hold) markOut(side === "requester" ? req : tgt, reason);
   });
+  if (truncatedNotes) warnings.push(`${truncatedNotes} ledger note(s) were longer than ${MAX_NOTE_CHARS} characters or ${MAX_NOTE_CLAUSES} clauses; only the first part was read for opt-out wording, so check them by hand.`);
   for (const { s, root } of segs) if (optInValue(s.opted_in) === "no") markOut(root, "opted out (segments)");
   for (const { m, root } of newMembers) if (optInValue(m.opted_in) === "no") markOut(root, "opted out (new_members)");
   eventPeople.forEach((ps, i) => { for (const p of ps) if (optInValue(p.opted_in) === "no") markOut(p.root, `opted out (events[${i}])`); });
@@ -449,7 +470,7 @@ export function planWeek(input: PlanInput) {
   });
   const touched = new Set(kept.slice(0, o.max_items).flatMap(({ c }) => [...(keptBy.get(c) ?? [])]));
   return {
-    today, items, spacing_conflicts, held, needs_review,
+    today, items, spacing_conflicts, held, needs_review, warnings,
     stats: { candidates: cands.length, items: items.length, people_touched: touched.size, opted_out: optedOut.size, moved: spacing_conflicts.length, needs_review: needs_review.length },
     spacing: { spacing_days: o.spacing_days, min_gap_hours: o.min_gap_hours, rule: "one proactive touch per person in the week; touches tied to a dated event keep their slot, others move to the next allowed date" },
   };

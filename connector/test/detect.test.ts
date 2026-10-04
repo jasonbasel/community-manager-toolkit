@@ -248,4 +248,21 @@ describe("only known header vocabulary is ever echoed (round-3 6)", () => {
     const o = d("x.csv", ["Name", "Yes", "2026-09-30", "42"]);
     expect(JSON.stringify(o)).not.toMatch(/Yes|2026|42/);
   });
+  it("free text that happens to contain a field or sensitive word is still flagged but never echoed (final-round 4)", () => {
+    const o = d("x.csv", ["Name", "Founder; diagnosed with ADHD last year", "Looking for seed investors and a CTO to join us", "Notes: call her Tuesday re the diagnosis"]);
+    expect(JSON.stringify(o)).not.toMatch(/ADHD|Founder|seed investors|Tuesday|diagnos/);
+    expect(o.warnings.join(" ")).not.toMatch(/no header row/); // "Name" keeps the row a header row; the free text is still never repeated
+    expect(o.sensitive_columns.map((c) => [c.index, c.column])).toEqual([[2, "column 2"], [4, "column 4"]]);
+    expect(o.mapping.find((m) => m.index === 3)).toMatchObject({ column: "column 3", field: "asks" });
+    // A cell holding a phone number makes the whole row data: every column is positional.
+    const data = d("x.csv", ["Name", "Founder; diagnosed with ADHD last year", "Company phone 07700 900123 ext 4"]);
+    expect(JSON.stringify(data)).not.toMatch(/ADHD|Founder|07700|Name/);
+    expect(data.warnings.join(" ")).toMatch(/no header row/);
+  });
+  it("still echoes real headers: short column names and single form questions", () => {
+    const headers = ["Health status", "Industry (e.g. Healthcare)", "What are you hoping to get from the community?", "Which city are you based in?", "Job title", "Tell us about yourself"];
+    const o = d("form.csv", ["Name", ...headers]);
+    const all = [...o.mapping, ...o.unmapped, ...o.contact_columns, ...o.sensitive_columns].sort((a, b) => a.index - b.index).map((c) => c.column);
+    expect(all).toEqual(["Name", "Health status", "Industry (e.g. Healthcare)", "What are you hoping to get from the community?", "column 5", "Job title", "Tell us about yourself"]);
+  });
 });

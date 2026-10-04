@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  displayOrg, emailParts, findEmails, findPhones, findSensitive, firstNameRelation, idContactKind, isEmailLike, isPhoneLabel, isPhoneLike, isPlaceholderName, jaroWinkler,
+  displayOrg, emailParts, exactKey, findEmails, findPhones, findSensitive, firstNameRelation, idContactKind, isEmailLike, isPhoneLabel, isPhoneLike, isPlaceholderName, jaroWinkler,
   nameKey, orgKey, parseDate, parseInstant, plain, scrubContacts, tidyName, toList,
 } from "../src/text/normalise.js";
 import { rng } from "./helpers/synthetic.js";
@@ -174,6 +174,20 @@ describe("Unicode name keys (round-3 4)", () => {
     expect(plain("Halden & Moss")).toBe("halden and moss");
     expect(nameKey("☺")).toBe("");
     expect(isPlaceholderName(nameKey("李明"))).toBe(false);
+  });
+  it("joins Latin letters that have no accent decomposition, so Søren is Soren (final-round 1)", () => {
+    expect(nameKey("Søren Kierkegaard")).toBe("soren kierkegaard");
+    expect(nameKey("Łukasz Dąbrowski")).toBe("lukasz dabrowski");
+    expect(nameKey("Straße")).toBe("strasse");
+    expect(nameKey("Ægir Þórsson")).toBe("aegir thorsson");
+    expect(nameKey("Đorđe Œ")).toBe("dorde oe");
+    expect(nameKey("ÐÆØ")).toBe("daeo");
+  });
+  it("treats only Latin initials as placeholders; a one-character name in another script is a name", () => {
+    for (const k of ["j s", "a b", "x", "a 1", "unknown", ""]) expect(isPlaceholderName(k), k).toBe(true);
+    for (const k of ["王 芳", "王", "李", "ы", "sam p", "xi"]) expect(isPlaceholderName(k), k).toBe(false);
+    expect(exactKey("  Wang  FANG ")).toBe("wang fang");
+    expect(exactKey("王　芳")).toBe("王 芳"); // ideographic space collapses to one space under NFKC
   });
 });
 

@@ -57,8 +57,11 @@ new members (`welcomed`), and `planned_touches` for anything already scheduled. 
 same name or member_id for a person across every input, so opt-outs and spacing apply to
 them everywhere. For any ledger row whose notes record an opt-out or a removal request,
 read the note yourself and set `opted_out` and `removal_request` to `requester`, `target`,
-`both` or `none`; if you can't tell who it refers to, use `both`. The tool never guesses
-from the note: without these fields it holds both people and asks the manager to confirm. If you
+`both` or `none`; if you can't tell who it refers to, use `both`. An erasure or removal
+request also counts as an opt-out for that person. Leave a field out rather than guessing
+`none`: a `none` that the note contradicts holds both people and flags the row. The tool
+never guesses from the note: without these fields it holds both people and asks the manager
+to confirm. If you
 have activity data, call `segment_members` first and pass its segments. Present the
 returned items, spacing conflicts and held items in the skill's format.
 

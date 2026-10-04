@@ -74,12 +74,16 @@ Map any export's columns to the canonical fields.
   Eventbrite attendee report, LinkedIn connections export, WhatsApp is text (not here).
   Alias tables live in `src/fields/` as data, with tests per platform.
 - Echo rule: a header string is repeated only when it is in the known header vocabulary
-  (alias tables, ignored headers, platform columns, contact / sensitive / engagement
-  patterns, question phrases) and is not itself a data value. Every other column is called
-  `column N` (1-based), and every mapping, unmapped, contact and sensitive entry carries
-  `index`, so the first data row of a headerless export can never be echoed even when the
-  row-level check does not fire. Sample values are returned only when they are consent or
-  status vocabulary; the rest are counted.
+  and is not itself a data value: exact entries (alias tables, ignored headers, platform
+  columns) always; pattern matches (field words, contact / sensitive / engagement patterns,
+  question phrases) only when the cell is shaped like a column name (≤40 characters, ≤5
+  words, no sentence punctuation, not digit-heavy) or is a single form question ("What are
+  you hoping to get from the community?"). Free text such as "Founder; diagnosed with ADHD
+  last year" is still flagged (sensitive, contact, asks …) but named `column N`. Every
+  other column is `column N` (1-based) too, and every mapping, unmapped, contact and
+  sensitive entry carries `index`, so the first data row of a headerless export can never
+  be echoed even when the row-level check does not fire. Sample values are returned only
+  when they are consent or status vocabulary; the rest are counted.
 - Sensitive headers are matched as whole words and specific phrases (health status /
   condition, medical, diagnosis, disability, pregnan*, religio*, ethnic*, race, sexual
   orientation, gender identity, marital, relationship status, plus gender, pronouns, date of
@@ -111,7 +115,11 @@ Merge records from several sources into one directory without contact details.
     social label. No country-code list is involved: a bare number under a non-phone source
     (HubSpot record IDs, Discord snowflakes, Slack `U…` IDs) is a platform ID and kept, and
     a prefix that names a platform (`slack:`, `discord:`) keeps its own meaning whatever
-    the record's source.
+    the record's source; generic kind words (`chat:`, `csv:`, `file:`, `group:` …) are not
+    platforms, so the source still decides. A source label (or prefix) that carries a
+    contact detail — a phone shape, or a run of seven or more digits that is not a
+    YYYYMMDD stamp ("whatsapp-447700900311") — is replaced with `unknown` and warned about,
+    never echoed in `by_source` or `source_ids`.
 - Out: `members` (directory columns from DESIGN.md v0.2 A1: `member_id, name,
   organisation, role, location, email_domain, source_ids, status, joined, last_active,
   last_active_source, asks, offers, tags, opted_in, opt_in_source, profile_quality,
@@ -156,20 +164,31 @@ Pair event guests fast, with backups, under hard rules.
 - In: `today`, `ledger` rows (compact), `events` (next 14 days), `new_members`,
   optional `segments`, `planned_touches`.
 - Opt-outs and removal requests (guardrails §12): each ledger row may carry `opted_out`
-  and `removal_request`, each `requester | target | both | none`, set by the caller after
-  reading the note. When set they are authoritative. When a field is not set, the server
-  never attributes the note to a person by name: if the note contains any opt-out or
-  removal wording (table in `src/data/consent-signals.ts`: DNC, do not contact / message /
-  email, opted out, unsubscribe(d), stop messaging, no more messages, doesn't want to be
-  contacted, remove me, delete my data / details / information, erase / redact, forget me,
-  GDPR erasure / removal …; clauses split on `. ; : ! ? — – - ( ) [ ] /` and "and", "but",
-  "then"; a negator cancels only "not / no longer opted out", "never unsubscribed" and
-  "don't forget") it holds BOTH people of the row, adds the row to the removal / opt-out
-  item with "confirm who it refers to", and lists it in `needs_review`. A false positive
-  holds two people until the manager confirms; a false negative would drop an opt-out.
-  `opted_in` on `new_members`, `events.people`, `segments` and `planned_touches` applies as
-  before, and people are one identity across inputs (ids and Unicode-aware name keys that
-  keep non-Latin letters and drop apostrophes consistently).
+  and `removal_request`, each `requester | target | both | none` (any case), set by the
+  caller after reading the note. A removal request for a party is also an opt-out for that
+  party. The server never attributes a note to a person by name. The note is always read
+  (table in `src/data/consent-signals.ts`): standalone wording (DNC incl. D.N.C., opted out,
+  unsubscribe(d)/unsubbed, STOP, reported as spam, GDPR, delete my data / details /
+  information / profile, erase / redact, forget me, blocked …) plus a lexical net — a
+  contact term (contact, message, email, reach out, call, text, ping, follow-up, invite,
+  newsletter, marketing, intros …) with a refusal (not, no, don't, never, stop, cease,
+  should not, no more, no longer, remove, block, wish not, asked to not …) in one clause,
+  unless the clause only reports what happened ("no reply to my email", "never
+  contacted"). Clauses split on `. , ; : ! ? — – - ( ) [ ] /` and "and", "but", "then"; a
+  negator cancels only "not / no longer opted out", "never unsubscribed" and "don't
+  forget". Then: a field left open is decided by the note (wording → both people held);
+  fields that deny what the note says (`none` against "DNC", `removal_request: none`
+  against "removal request") keep their value but both people are held and the row is
+  flagged "note and fields disagree"; fields that agree with the note stand. Every held row
+  goes to the removal / opt-out item with "confirm who it refers to" and to `needs_review`.
+  A false positive holds two people until the manager confirms; a false negative would drop
+  an opt-out. Work per note is capped (10,000 characters, 500 clauses) and reported in
+  `warnings`. `opted_in` on `new_members`, `events.people`, `segments` and
+  `planned_touches` applies as before, and people are one identity across inputs: ids,
+  Unicode-aware name keys (non-Latin letters kept, Latin accents and ł/ø/ß/æ/œ/þ folded,
+  apostrophes dropped) and an exact-string key for every name, so "王 芳" or "☺" in a
+  `name` field is the bare "王 芳" of a ledger row; only Latin initials and placeholder
+  words ("Unknown") never join anyone.
 - Priority: removal / opt-out requests → overdue answers / lapse notices → follow-through
   and outcome checks due → events in the next 14 days not yet matched (sooner first) →
   new members not welcomed (≤30 days) → a re-engagement batch → impact report if a month
@@ -177,11 +196,11 @@ Pair event guests fast, with backups, under hard rules.
 - Spacing: no member gets two proactive touches in 7 days or two within 72 hours; return
   conflicts with the resolution applied.
 - Out: `items` (≤7 default) `{kind, title, why_now, people, due, suggested_prompt}`,
-  `spacing_conflicts`, `held` (a hold for an unattributed note reads "opt-out note found —
-  confirm who it refers to"), `needs_review [{row, intro_id, requester, target,
-  needs_review: true, signals, reason}]` (rule ids only, never note text), `stats`
-  (incl. `opted_out`, `needs_review`). All additions are new fields; nothing existing
-  changed shape.
+  `spacing_conflicts`, `held` (a hold for an unattributed or contradicted note reads
+  "opt-out note found — confirm who it refers to"), `needs_review [{row, intro_id,
+  requester, target, needs_review: true, signals, reason, fields}]` (rule ids only, never
+  note text), `warnings`, `stats` (incl. `opted_out`, `needs_review`). All additions are
+  new fields; nothing existing changed shape.
 
 ### 4.6 `compute_impact_metrics`
 - In: `period {start, end}`, `ledger` rows (`intro_id, created, source, status,

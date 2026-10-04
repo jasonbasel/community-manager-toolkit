@@ -4,6 +4,9 @@
 CLI:
   streamlib.py result  <stream.jsonl>   print the final result event as JSON (same shape as --output-format json)
   streamlib.py summary <stream.jsonl>   human-readable digest: init facts, hooks, tool calls, final text
+
+The connector arm (evals/run.sh --mode connector|all) adds the toolkit's MCP server; connector_summary() and
+mcp_calls() read what the init event exposed and which of its tools the run called, answered or was denied.
 """
 import json
 import sys
@@ -48,6 +51,74 @@ def skills_invoked(events):
     return [c["input"].get("skill", "?") for c in tool_calls(events) if c["name"] == "Skill"]
 
 
+# The connector arm's one MCP server (named in evals/iso_claude.sh); its tools are mcp__<server>__<tool>.
+MCP_SERVER = "community-manager-toolkit"
+MCP_PREFIX = "mcp__%s__" % MCP_SERVER
+
+
+def connector_status(events):
+    """What the init event says about the connector: (server status, number of its tools exposed to the model).
+
+    status is "connected" when the tools are really there; "pending"/"failed" (or "absent") means the model
+    never saw them, so the run measures the plain plugin, not plugin + connector.
+    """
+    init = init_event(events)
+    if not init:
+        return "no init event", 0
+    status = {m.get("name"): m.get("status") for m in init.get("mcp_servers", [])}.get(MCP_SERVER, "absent")
+    return status, sum(1 for t in init.get("tools", []) if str(t).startswith(MCP_PREFIX))
+
+
+def mcp_calls(events):
+    """Calls to the connector's tools, in order: [{"tool": short name, "status": ok | error | denied | no result}].
+
+    "denied" = headless permission denial (the tool_result is an error and the result event lists it in
+    permission_denials); "error" = the tool answered with isError; "no result" = the run ended before an answer.
+    """
+    results = {}   # tool_use_id -> (is_error, text of the result)
+    for e in events:
+        if e.get("type") == "user" and isinstance(e.get("message", {}).get("content"), list):
+            for b in e["message"]["content"]:
+                if isinstance(b, dict) and b.get("type") == "tool_result":
+                    c = b.get("content")
+                    text = c if isinstance(c, str) else " ".join(x.get("text", "") for x in c if isinstance(x, dict)) if isinstance(c, list) else ""
+                    results[b.get("tool_use_id")] = (bool(b.get("is_error")), text)
+    res = result_event(events) or {}   # a run that timed out has no result event: the tool_result text still shows a denial
+    denied = {d.get("tool_use_id") for d in res.get("permission_denials", []) if isinstance(d, dict)}
+    denied |= {t for t, (err, text) in results.items() if err and text.startswith("Claude requested permissions")}
+    calls = []
+    for e in events:
+        if e.get("type") == "assistant":
+            for b in e.get("message", {}).get("content", []):
+                if isinstance(b, dict) and b.get("type") == "tool_use" and str(b.get("name", "")).startswith(MCP_PREFIX):
+                    tid = b.get("id")
+                    status = "denied" if tid in denied else "no result" if tid not in results else "error" if results[tid][0] else "ok"
+                    calls.append({"tool": b["name"][len(MCP_PREFIX):], "status": status})
+    return calls
+
+
+def connector_summary(events):
+    """One-line digest of the connector's use in a run, e.g. "pair_attendees, check_draft_message x2 (1 error)".
+
+    "none" when it was connected but never called; "NOT CONNECTED (pending)" when the model never saw the tools.
+    """
+    status, n_tools = connector_status(events)
+    if status != "connected" or n_tools == 0:
+        return "NOT CONNECTED (%s)" % (status if status != "connected" else "no tools exposed")
+    order, by_tool = [], {}
+    for c in mcp_calls(events):
+        if c["tool"] not in by_tool:
+            order.append(c["tool"])
+            by_tool[c["tool"]] = []
+        by_tool[c["tool"]].append(c["status"])
+    parts = []
+    for t in order:
+        st = by_tool[t]
+        bad = ["%d %s" % (st.count(k), k) for k in ("denied", "error", "no result") if k in st]
+        parts.append(t + (" x%d" % len(st) if len(st) > 1 else "") + (" (%s)" % ", ".join(bad) if bad else ""))
+    return ", ".join(parts) or "none"
+
+
 def hook_events(events):
     return [e for e in events if e.get("type") == "system" and str(e.get("subtype", "")).startswith("hook")]
 
@@ -66,6 +137,8 @@ def summary(events):
         agents = init.get("agents", [])
         out.append("agents (%d): %s" % (len(agents), ", ".join(agents) or "none"))
         out.append("model: %s" % init.get("model"))
+        if any(m.get("name") == MCP_SERVER for m in mcp):
+            out.append("connector: %s" % connector_summary(events))
     else:
         out.append("(no init event found)")
     hooks = hook_events(events)

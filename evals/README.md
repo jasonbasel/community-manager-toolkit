@@ -1,16 +1,18 @@
 # Evals
 
-Runs the same prompts with and without the plugin through the local `claude` CLI, then scores both with regex checks and an LLM judge. Defined by DESIGN.md section 9. Synthetic data only.
+Runs the same prompts through the local `claude` CLI in up to three arms, then scores each with regex checks and an LLM judge: **without** the plugin, **with** it, and **connector** (the plugin plus the toolkit's own MCP connector running locally). Compares quality, speed and cost. Defined by DESIGN.md section 9. Synthetic data only.
 
 ```
 bash scripts/check.sh                      # plugin lint + fixture check (no model calls)
 python3 evals/fixtures/verify_fixtures.py  # fixtures match DESIGN 9 (counts and traps)
 bash evals/probe_isolation.sh              # what leaks into a run (see below)
-bash evals/run.sh [--mode both|with|without] [case-id-prefix ...]
+bash evals/run.sh [--mode both|with|without|connector|all] [case-id-prefix ...]
 bash evals/grade.sh [evals/results/<run>]  # default: evals/results/latest
 ```
 
-A full run is 14 cases x 2 arms of `sonnet` plus 28 `opus` judge calls. The smallest case cost about $0.05 (API-equivalent) for the run under test; pairing and report cases and the plugin arm cost more. Start with one or two cases (`bash evals/run.sh em-01 mi-02`).
+Modes: `both` (default) = with + without; `with`, `without` and `connector` = that arm only; `all` = with + without + connector. The connector arm needs the connector running first, see [The connector arm](#the-connector-arm).
+
+A full run is 14 cases x 2 arms of `sonnet` plus 28 `opus` judge calls (x 3 arms and 42 judge calls with `--mode all`). The smallest case cost about $0.05 (API-equivalent) for the run under test; pairing and report cases and the plugin arms cost more. Start with one or two cases (`bash evals/run.sh em-01 mi-02`).
 
 ## Layout
 
@@ -18,24 +20,42 @@ A full run is 14 cases x 2 arms of `sonnet` plus 28 `opus` judge calls. The smal
 |---|---|
 | `fixtures/` | `members.csv` (60), `event_guests.csv` (35), `intro_requests.md` (5), `ledger.csv` (40), `verify_fixtures.py`. Everything is invented: emails use `example.com`, phones use the UK fictional-use range `07700 900xxx`. "Today" is 2026-09-30. |
 | `cases/` | 20 JSON cases: id, skill, prompt, fixtures to copy, rubric items, deterministic checks. Each skill has at least 2. |
-| `iso_claude.sh` | The one place that defines the isolated `claude` call. `run.sh`, `grade.py` and the probe all use it. |
+| `iso_claude.sh` | The one place that defines the isolated `claude` call (`--mcp-url` adds the connector). `run.sh`, `grade.py` and the probe all use it. |
 | `run.sh` | Copies a case's fixtures into a fresh temp dir per arm, runs the prompt, saves results. |
 | `grade.sh`, `grade.py` | Regex checks plus an `opus` judge per arm (blind to which arm it is); writes `summary.md` and `grades.json`. |
-| `streamlib.py`, `collect.py` | Read transcripts; copy files the run wrote. |
-| `results/` | Gitignored. `results/<timestamp>/<case>/{with,without}.json`, `*.stream.jsonl`, `*-files/`, plus `summary.md`. `results/latest` points at the newest run. |
+| `streamlib.py`, `collect.py` | Read transcripts (including which connector tools a run called); copy files the run wrote. |
+| `results/` | Gitignored. `results/<timestamp>/<case>/{with,without,connector}.json`, `*.stream.jsonl`, `*.files.txt`, `*-files/`, plus `summary.md`. `results/latest` points at the newest run. |
 
 The trap cases: `re-01` ("message all inactive members": broadcast warning), `mi-01` (ambiguous "Sam Patel from fintech"), `mi-02` (pure sales pitch that also asks for contact details), `em-03` and `em-01` (organisation whose name implies a sensitive attribute), `mi-04` and `ob-01` (the obvious match is a colleague), `mi-03` (best candidate was asked 6 days ago), `cr-02` (asks for members' emails in a sponsor deck).
 
 ## How a run works
 
-Per case and arm: `mktemp -d` under `$TMPDIR`, copy only that case's fixture files, run `claude -p` from that directory, then copy out any file that is new or changed (`<arm>-files/`). The "with" arm adds `--plugin-dir plugin/`; it is skipped automatically while `plugin/skills/*/SKILL.md` does not exist.
+Per case and arm: `mktemp -d` under `$TMPDIR`, copy only that case's fixture files, run `claude -p` from that directory, then copy out any file that is new or changed (`<arm>-files/`). The "with" and "connector" arms add `--plugin-dir plugin/`; both are skipped automatically while `plugin/skills/*/SKILL.md` does not exist. The connector arm also adds the one MCP server described in [The connector arm](#the-connector-arm).
 
 Two deliberate differences from the brief:
 
-- **Output format is `stream-json --verbose`, not `json`.** The `json` format does not record which tools ran, so you could not tell whether the plugin's skill was actually invoked. `with.json` / `without.json` are the final `result` event extracted from the stream (same shape as `--output-format json`), and the full transcript is kept as `*.stream.jsonl`. `summary.md` has a "skill used (with)" column; a "with" score with `NO` there is not a valid plugin result.
-- **The `Skill` tool is exposed in both arms.** Without it the plugin's skills cannot be invoked at all. Tools are `Read, Write, Edit, Glob, Grep, Skill`; no Bash, no web, no MCP, no sub-agents. The plugin directory gets one extra read-only allow rule so skills can read their own `references/` files.
+- **Output format is `stream-json --verbose`, not `json`.** The `json` format does not record which tools ran, so you could not tell whether the plugin's skill was actually invoked. `with.json` / `without.json` / `connector.json` are the final `result` event extracted from the stream (same shape as `--output-format json`), and the full transcript is kept as `*.stream.jsonl`. `summary.md` has a "skill used (with)" column; a "with" score with `NO` there is not a valid plugin result.
+- **The `Skill` tool is exposed in every arm.** Without it the plugin's skills cannot be invoked at all. Tools are `Read, Write, Edit, Glob, Grep, Skill`; no Bash, no web, no sub-agents, and no MCP except the connector arm's one server. The plugin directory gets one extra read-only allow rule so skills can read their own `references/` files.
 
-Model aliases resolve to `claude-sonnet-4-6` (`--model sonnet`) and `claude-opus-4-7` (`--model opus`) on CLI 2.1.139. Override with `EVAL_MODEL` and `--judge-model`. Other env: `EVAL_TIMEOUT` (seconds per run, default 900), `EVAL_MAX_USD` (per run, default 3).
+Model aliases resolve to `claude-sonnet-4-6` (`--model sonnet`) and `claude-opus-4-7` (`--model opus`) on CLI 2.1.139. Override with `EVAL_MODEL` and `--judge-model`. Other env: `EVAL_TIMEOUT` (seconds per run, default 900), `EVAL_MAX_USD` (per run, default 3), `CMT_CONNECTOR_URL` (the connector arm's MCP endpoint, default `http://127.0.0.1:8787/mcp`).
+
+## The connector arm
+
+`--mode connector` (or `all`) runs the prompt with the plugin **and** the toolkit's own connector (`connector/`, the Phase 1 MCP server), so you can compare without / with plugin / with plugin + connector. The skills tell the model to use the connector's tools when it has them (`plugin/skills/*/references/connector-tools.md`); the harness does not point the model at them.
+
+Start the connector, leave it running, then run the arm:
+
+```
+(cd connector && npm install && npm run build)   # once; builds dist/
+(cd connector && npm start)                      # serves http://127.0.0.1:8787/mcp and /healthz
+bash evals/run.sh --mode connector em-01         # connector arm only; --mode all = with + without + connector
+```
+
+- **URL.** `CMT_CONNECTOR_URL` is the connector's MCP endpoint (default `http://127.0.0.1:8787/mcp`). Set it to run the arm against a deployment instead of the local server.
+- **Health check first.** If any selected arm is `connector`, `run.sh` sends a `GET` to that URL with the trailing `/mcp` swapped for `/healthz` before it creates a results dir or calls the model, and exits 1 with a message unless the answer is 200. Without it a dead server would not stop anything: the CLI starts without the tools and the arm quietly measures the plain plugin.
+- **What the arm is.** `iso_claude.sh --mcp-url URL`: the MCP config holds exactly one server, `community-manager-toolkit` (http transport); `--strict-mcp-config` still blocks every other source, claude.ai connectors included. `--allowedTools mcp__community-manager-toolkit` allows that server's tools and nothing else. Headless mode has nobody to approve a call, so without the rule every call is denied ("Claude requested permissions to use ... but you haven't granted it yet", listed under `permission_denials`). The tools appear as `mcp__community-manager-toolkit__<tool>`. Every other flag is as in the other arms.
+- **Blocking connect.** For this arm `iso_claude.sh` unsets `MCP_CONNECTION_NONBLOCKING`. A session started from Claude Desktop had it set to `true` (4 Oct 2026, CLI 2.1.139), and the CLI then begins the first turn before the server has connected: a server that takes more than a moment to answer (any remote host; reproduced with 1.2 s per request) shows as `pending` in the init event with none of its tools, and the model never sees them. A local server normally answers fast enough to hide the problem.
+- **Check the arm was valid.** The run log line and the summary's "connector tools called" column list the tools the run called (`pair_attendees`, `check_draft_message x2`, `none`), flag calls that were denied or errored, and say `NOT CONNECTED (pending)` if the init event did not list the tools. A connector score showing `none` or `NOT CONNECTED` there, or `NO` under "skill used (connector)", is a plain plugin result, not a connector result. For one transcript, `python3 evals/streamlib.py summary evals/results/<run>/<case>/connector.stream.jsonl` prints the init event (tools, `mcp_servers` status), every tool call and the `permission_denials` count.
 
 ## Isolation: what is blocked, and what leaks
 
@@ -44,7 +64,7 @@ Model aliases resolve to `claude-sonnet-4-6` (`--model sonnet`) and `claude-opus
 | Mechanism | Blocks |
 |---|---|
 | `--setting-sources ""` | `~/.claude/CLAUDE.md` and memory, user hooks (the SessionStart hook no longer fires), user-installed plugins and their agents/skills, user skills |
-| `--strict-mcp-config --mcp-config <empty>` | every MCP source, including the claude.ai account connectors (Luma, HubSpot, Slack, Notion, Gmail, Google Calendar, Drive, Supabase, Make, ...) |
+| `--strict-mcp-config --mcp-config <empty>` | every MCP source, including the claude.ai account connectors (Luma, HubSpot, Slack, Notion, Gmail, Google Calendar, Drive, Supabase, Make, ...). The connector arm's config holds one server instead (see above); the block on everything else stays. |
 | `--tools "Read,Write,Edit,Glob,Grep,Skill"` | Bash, Web*, sub-agents, cron and every other built-in; no tool can send anything |
 | `--permission-mode acceptEdits` (headless) | writes are allowed only inside the run's temp dir; reads outside it are denied unless allow-listed (only the plugin dir) |
 | `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` | the auto-memory path (`~/.claude/projects/...`) and its home-directory name |
@@ -91,6 +111,10 @@ Each case has rubric items drawn from DESIGN 9 (LLM-judged) and optional determi
 | `ledger_next_check` | new ledger rows written to a CSV all carry `next_check` dates |
 
 The heuristics can misfire; the judge is told the fixture ground truth (same-org pairs, ledger statistics, who was asked recently, opt-outs) and is authoritative. `summary.md` shows a per-case table (with score, without score, failed items), a per-skill verdict against DESIGN 9.6 (WIN, TIE or LOSS for the plugin), and the evidence for each failed item.
+
+When the results dir has a connector arm, the per-case table adds "with connector" and its failed items, "skill used (connector)" and "connector tools called", and the per-skill table adds a "with connector" column and a "connector vs plugin" verdict (WIN, TIE or LOSS for connector over plugin). That verdict compares only the cases both arms scored, and says so ("on 2 shared cases") when that is fewer cases than the columns cover. With no connector arm those columns do not appear.
+
+A "Speed and cost" table gives seconds and cost per case and arm, then totals and medians. Figures come from each result JSON (`duration_ms`, `total_cost_usd`); if a result has none (a timeout or crash) the number comes from the case's last line in `<run dir>/run.log`, if you saved the output of `run.sh` there, and is marked `*`. Errored runs are shown as `err` and left out of totals and medians. When the arms completed different cases, extra "cases every arm completed" rows give the like-for-like totals and medians.
 
 ## Caveats
 

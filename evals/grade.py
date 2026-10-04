@@ -5,12 +5,15 @@ usage: grade.py RESULTS_DIR [--judge-model opus] [--jobs 3] [--no-judge] [case-i
 
 Writes RESULTS_DIR/grades.json and RESULTS_DIR/summary.md. The judge is the local `claude` CLI run through
 evals/iso_claude.sh (same isolation as the runs, no tools), and it is scored per arm, blind to which arm it is.
+Arms: with (plugin), without (plain), connector (plugin + the toolkit's MCP connector). Any arm missing from the
+results dir is skipped; the connector columns and verdict appear only when a connector arm is present.
 """
 import argparse
 import csv
 import datetime as dt
 import json
 import re
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -25,6 +28,8 @@ import streamlib  # noqa: E402
 FIX = HERE / "fixtures"
 REF = dt.date(2026, 9, 30)
 MAX_FILE_CHARS = 40000
+ARMS = ("with", "without", "connector")
+ARM_TITLE = {"with": "with plugin", "without": "without plugin", "connector": "with connector"}
 
 
 # ----------------------------------------------------------------------------- fixtures
@@ -373,7 +378,7 @@ def call_judge(prompt, model):
     for attempt in range(2):
         with tempfile.TemporaryDirectory(prefix="cmt-judge.") as cwd:
             try:
-                p = subprocess.run([str(HERE / "iso_claude.sh"), "--cwd", cwd, "--model", model, "--tools", "", "--format", "json"],
+                p = subprocess.run([str(HERE / "iso_claude.sh"), "--cwd", cwd, "--model", model, "--tools", "", "--format", "json", "--effort", "high"],
                                    input=prompt, capture_output=True, text=True, timeout=900)
             except subprocess.TimeoutExpired:
                 last_err = "judge timed out"
@@ -421,6 +426,95 @@ def fmt(sc):
     return "-" if sc is None else "%d/%d (%d%%)" % (sc[0], sc[1], round(100 * sc[0] / sc[1]))
 
 
+def verdict(a, b):
+    """WIN / TIE / LOSS of arm a over arm b; a and b are [passed, total] sums."""
+    if not a[1] or not b[1]:
+        return "n/a (one arm missing)"
+    x, y = a[0] / a[1], b[0] / b[1]
+    return "WIN" if x > y else "TIE" if x == y else "LOSS"
+
+
+# run.log lines (written by run.sh to stdout; the run's operator redirects them): "<case> <arm> <secs>s rc=N cost=$X ..."
+RUNLOG = re.compile(r"^(?P<case>\S+)\s+(?P<arm>with|without|connector)\s+(?P<secs>\d+)s\s+rc=(?P<rc>-?\d+)\s+cost=\$(?P<cost>[\d.]+)")
+
+
+def run_log_index(rdir):
+    """Last run.log line per (case, arm). A results dir that was re-run in place logs a case more than once;
+    the last line belongs to the result files that are on disk."""
+    idx = {}
+    p = rdir / "run.log"
+    if p.exists():
+        for line in p.read_text(errors="replace").splitlines():
+            m = RUNLOG.match(line)
+            if m:
+                idx[(m["case"], m["arm"])] = {"seconds": int(m["secs"]), "cost": float(m["cost"])}
+    return idx
+
+
+def measure(d, logrow):
+    """(seconds, cost, seconds_from_log, cost_from_log) for one run. The result JSON's duration_ms and
+    total_cost_usd win; a run that died (timeout, crash) has neither, so fall back to its run.log line.
+    run.log prints cost=$0.000 for a run with no cost figure, which means unknown, not free."""
+    secs = d["duration_ms"] / 1000.0 if d.get("duration_ms") is not None else None
+    cost = d["cost"]
+    from_log_s = from_log_c = False
+    if secs is None and logrow:
+        secs, from_log_s = float(logrow["seconds"]), True
+    if cost is None and logrow and logrow["cost"] > 0:
+        cost, from_log_c = logrow["cost"], True
+    return secs, cost, from_log_s, from_log_c
+
+
+def speed_cost_lines(cases, data, rdir):
+    """The 'Speed and cost' section: seconds and cost per case and arm, then totals and medians."""
+    arms = [a for a in ARMS if any((cid, a) in data for cid in cases)]
+    if not arms:
+        return []
+    log = run_log_index(rdir)
+    cells = {}
+    valid = {a: {"s": {}, "c": {}} for a in arms}   # valid[arm]["s" | "c"][case] = value from a run that did not error
+    for cid in cases:
+        for a in arms:
+            d = data.get((cid, a))
+            if d is None:
+                continue
+            secs, cost, from_log_s, from_log_c = measure(d, log.get((cid, a)))
+            err = " err" if d["is_error"] else ""
+            cells[(cid, a, "s")] = "-" if secs is None else "%d%s%s" % (round(secs), "*" if from_log_s else "", err)
+            cells[(cid, a, "c")] = "-" if cost is None else "$%.2f%s%s" % (cost, "*" if from_log_c else "", err)
+            if not d["is_error"]:
+                if secs is not None:
+                    valid[a]["s"][cid] = secs
+                if cost is not None:
+                    valid[a]["c"][cid] = cost
+    cols = [("s", a) for a in arms] + [("c", a) for a in arms]
+
+    def f(k, x):
+        return "-" if x is None else ("%d" % round(x) if k == "s" else "$%.2f" % x)
+
+    md = ["## Speed and cost", "",
+          "Seconds are the CLI's own session time (`duration_ms` in each result JSON); cost is its `total_cost_usd` (API-equivalent). "
+          "`*` = the result JSON had no figure, so the number is from `run.log`. `err` = the run errored (timeout or crash): shown, "
+          "but left out of totals and medians.", "",
+          "| case | %s |" % " | ".join(("seconds: " if k == "s" else "cost: ") + ARM_TITLE[a] for k, a in cols), "|---|" + "---|" * len(cols)]
+    for cid in cases:
+        if any((cid, a) in data for a in arms):
+            md.append("| %s | %s |" % (cid, " | ".join(cells.get((cid, a, k), "-") for k, a in cols)))
+    own = {(k, a): list(valid[a][k].values()) for k, a in cols}
+    md.append("| **total** | %s |" % " | ".join(f(k, sum(own[k, a]) if own[k, a] else None) for k, a in cols))
+    md.append("| **median** | %s |" % " | ".join(f(k, statistics.median(own[k, a]) if own[k, a] else None) for k, a in cols))
+    md.append("| n (completed runs) | %s |" % " | ".join(str(len(own[k, a])) for k, a in cols))
+    # When the arms completed different cases the rows above compare different workloads: add like-for-like rows.
+    common = set(cases)
+    for a in arms:
+        common &= set(valid[a]["s"]) & set(valid[a]["c"])
+    if len(arms) > 1 and any(set(valid[a][k]) != common for k, a in cols):
+        same = {(k, a): [valid[a][k][c] for c in sorted(common)] for k, a in cols}
+        md.append("| **total, cases every arm completed (n=%d)** | %s |" % (len(common), " | ".join(f(k, sum(same[k, a]) if common else None) for k, a in cols)))
+        md.append("| **median, cases every arm completed (n=%d)** | %s |" % (len(common), " | ".join(f(k, statistics.median(same[k, a]) if common else None) for k, a in cols)))
+    return md + [""]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("results_dir")
@@ -442,7 +536,7 @@ def main():
     jobs = []  # (case_id, arm)
     data = {}
     for cid, case in cases.items():
-        for arm in ("with", "without"):
+        for arm in ARMS:
             final = result_text(rdir / cid, arm)
             if final is None:
                 continue
@@ -451,8 +545,13 @@ def main():
             events = streamlib.load(str(rdir / cid / ("%s.stream.jsonl" % arm))) if (rdir / cid / ("%s.stream.jsonl" % arm)).exists() else []
             data[(cid, arm)] = {"final": final, "files": files, "det": run_checks(case, final, files), "judge": [], "judge_error": None,
                                 "skills": streamlib.skills_invoked(events), "cost": res.get("total_cost_usd"), "is_error": bool(res.get("is_error")),
-                                "files_written": sorted(files)}
+                                "files_written": sorted(files), "duration_ms": res.get("duration_ms")}
+            if arm == "connector":
+                status, n_tools = streamlib.connector_status(events)
+                data[(cid, arm)]["connector"] = {"server_status": status, "tools_exposed": n_tools, "calls": streamlib.mcp_calls(events),
+                                                 "summary": streamlib.connector_summary(events)}
             jobs.append((cid, arm))
+    has_conn = any(arm == "connector" for _, arm in data)
 
     if not args.no_judge:
         def work(job):
@@ -471,6 +570,8 @@ def main():
         out["cases"].setdefault(cid, {})[arm] = {"score": score(items), "items": items, "skills_invoked": d["skills"],
                                                  "files_written": d["files_written"], "cost_usd": d["cost"],
                                                  "judge_error": d["judge_error"], "run_error": d["is_error"]}
+        if arm == "connector":
+            out["cases"][cid][arm]["connector"] = d["connector"]
     (rdir / "grades.json").write_text(json.dumps(out, indent=2))
 
     # ---- summary.md
@@ -481,15 +582,20 @@ def main():
           "- Model under test: `%s` (claude CLI %s)" % (info.get("model_alias", "?"), info.get("claude_version", "?")),
           "- Judge: `%s`%s" % (args.judge_model, " (skipped: deterministic checks only)" if args.no_judge else ""),
           "- Score = passed rubric items + passed deterministic checks. Deterministic checks are marked `det:` in failures.", ""]
-    md += ["## Per case", "", "| case | skill | with plugin | without plugin | skill used (with) | failed items: with | failed items: without |",
-           "|---|---|---|---|---|---|---|"]
-    per_skill = defaultdict(lambda: {"with": [0, 0], "without": [0, 0]})
+    # Per-case columns; the connector ones exist only when the results dir has a connector arm.
+    cols = ["case", "skill", "with plugin", "without plugin"] + (["with connector"] if has_conn else []) + ["skill used (with)"] \
+        + (["skill used (connector)", "connector tools called"] if has_conn else []) + ["failed items: with", "failed items: without"] \
+        + (["failed items: with connector"] if has_conn else [])
+    md += ["## Per case", "", "| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
+    per_skill = defaultdict(lambda: {arm: [0, 0] for arm in ARMS})
+    shared = defaultdict(lambda: {"with": [0, 0], "connector": [0, 0], "n": 0})   # cases where both with and connector scored
     detail = []
     total_cost = 0.0
     for cid, case in cases.items():
         row = {}
         failed = {}
-        for arm in ("with", "without"):
+        scored = {}
+        for arm in ARMS:
             d = data.get((cid, arm))
             if d is None:
                 row[arm], failed[arm] = "-", "-"
@@ -497,28 +603,49 @@ def main():
             items = d["det"] + d["judge"]
             sc = score(items)
             total_cost += d["cost"] or 0
-            row[arm] = fmt(sc) + (" (judge error)" if d["judge_error"] else "") + (" (run error)" if d["is_error"] else "")
+            row[arm] = fmt(sc) + (" (judge error)" if d["judge_error"] else "") + (" (run error)" if d["is_error"] else "") \
+                + (" (connector not connected)" if arm == "connector" and d["connector"]["summary"].startswith("NOT CONNECTED") else "")
             fails = [i for i in items if not i["pass"]]
             failed[arm] = ", ".join(i["id"] for i in fails) or "none"
             if sc and not d["judge_error"]:
                 per_skill[case["skill"]][arm][0] += sc[0]
                 per_skill[case["skill"]][arm][1] += sc[1]
+                scored[arm] = sc
             for i in fails:
                 detail.append("- `%s` / %s / `%s`: %s" % (cid, arm, i["id"], i["evidence"]))
+        if "with" in scored and "connector" in scored:
+            sh = shared[case["skill"]]
+            sh["n"] += 1
+            for arm in ("with", "connector"):
+                sh[arm][0] += scored[arm][0]
+                sh[arm][1] += scored[arm][1]
         used = data.get((cid, "with"))
         skill_col = "-" if used is None else (", ".join(sorted(set(used["skills"]))) or "NO")
-        md.append("| %s | %s | %s | %s | %s | %s | %s |" % (cid, case["skill"], row["with"], row["without"], skill_col, failed["with"], failed["without"]))
+        cells = [cid, case["skill"], row["with"], row["without"]] + ([row["connector"]] if has_conn else []) + [skill_col]
+        if has_conn:
+            c = data.get((cid, "connector"))
+            cells += ["-" if c is None else (", ".join(sorted(set(c["skills"]))) or "NO"), "-" if c is None else c["connector"]["summary"]]
+        cells += [failed["with"], failed["without"]] + ([failed["connector"]] if has_conn else [])
+        md.append("| " + " | ".join(cells) + " |")
     md += ["", "## Per skill (DESIGN 9.6: the plugin must beat plain Claude on the rubric for each skill)", "",
-           "| skill | with plugin | without plugin | verdict |", "|---|---|---|---|"]
+           "| skill | with plugin | without plugin | " + ("with connector | verdict | connector vs plugin |" if has_conn else "verdict |"),
+           "|---|---|---|" + ("---|---|---|" if has_conn else "---|")]
     for skill, v in sorted(per_skill.items()):
-        w, wo = v["with"], v["without"]
-        if not w[1] or not wo[1]:
-            verdict = "n/a (one arm missing)"
-        else:
-            a, b = w[0] / w[1], wo[0] / wo[1]
-            verdict = "WIN" if a > b else "TIE" if a == b else "LOSS"
-        md.append("| %s | %s | %s | %s |" % (skill, fmt(tuple(w) if w[1] else None), fmt(tuple(wo) if wo[1] else None), verdict))
-    md += ["", "Run cost (model under test, both arms): about $%.2f" % total_cost, ""]
+        w, wo, co = v["with"], v["without"], v["connector"]
+        cells = [skill, fmt(tuple(w) if w[1] else None), fmt(tuple(wo) if wo[1] else None)]
+        if has_conn:
+            cells.append(fmt(tuple(co) if co[1] else None))
+        cells.append(verdict(w, wo))
+        if has_conn:
+            # Compare on the cases both arms scored; say so when that is fewer cases than either column above covers.
+            sh = shared[skill]
+            cv = verdict(sh["connector"], sh["with"]) if sh["n"] else "n/a (one arm missing)"
+            if sh["n"] and (sh["connector"] != co or sh["with"] != w):
+                cv += " (on %d shared case%s)" % (sh["n"], "" if sh["n"] == 1 else "s")
+            cells.append(cv)
+        md.append("| " + " | ".join(cells) + " |")
+    md += ["", "Run cost (model under test, %s): about $%.2f" % ("all arms present" if has_conn else "both arms", total_cost), ""]
+    md += speed_cost_lines(cases, data, rdir)
     if detail:
         md += ["## Failed items: evidence", ""] + detail + [""]
     (rdir / "summary.md").write_text("\n".join(md))

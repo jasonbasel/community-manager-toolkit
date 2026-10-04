@@ -1,6 +1,6 @@
 ---
 name: new-member-onboarding
-description: "New member onboarding for community managers: welcome new members with one named introduction instead of a feature tour, then check in on day 3, day 14 and day 30. Use when someone asks to welcome new members, write a welcome message or onboarding sequence, plan a new member's first 30 days, improve member activation or early churn, or introduce new members to the community. Picks one person to meet (consent-first, same organisation excluded) and one upcoming event, drafts every message for approval, and logs the intro in the ledger. Drafts only; never sends."
+description: "New member onboarding for community managers. Use this skill whenever someone wants to welcome a new member or a batch of new members, draft a welcome message or email, plan a member's first 30 days or an onboarding sequence, improve activation or early churn, or introduce newcomers to the community, even if they only say 'draft X's welcome'. It holds the rule that a welcome built around one named introduction beats a feature tour, plus consent, same-organisation and channel-format rules. Picks one person to meet and one upcoming event, drafts the welcome and the day-3, day-14 and day-30 check-ins for the community's channel, and logs the intro in the ledger. Drafts only; never sends."
 ---
 
 # New Member Onboarding

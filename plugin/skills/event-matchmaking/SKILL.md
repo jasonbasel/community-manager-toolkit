@@ -1,6 +1,6 @@
 ---
 name: event-matchmaking
-description: "Event matchmaking for community managers: pair attendees before a networking event so everyone arrives with a named person to meet, a reason to talk and a backup. Use when someone asks to match or pair event attendees, plan who should meet whom, write icebreakers or a seating plan, run a match hunt, work from a Luma, Eventbrite, Ticket Tailor or RSVPify guest list or an attendee CSV, draft pre-event messages or emails, or follow up after an event. Produces an approval table, a host sheet, 'find [name]' message drafts for WhatsApp, email, Slack or Discord, a morning-after follow-up and intro ledger rows. Consent-first; drafts only, never sends."
+description: "Event matchmaking for community managers. Use this skill whenever someone asks who should meet whom at an event, wants attendees paired or matched, asks who a particular guest should meet, needs icebreakers, a seating plan, a host sheet, pre-event 'find [name]' messages or a post-event follow-up, or shares a Luma, Eventbrite, Ticket Tailor or RSVPify guest list or an attendee CSV, even if they don't say 'matchmaking'. It holds rules you can't infer: same-organisation exclusion, neutral wording for organisations whose names signal a sensitive attribute, backups for no-shows, consent and approval steps. Produces an approval table, host sheet, message drafts for WhatsApp, email, Slack or Discord, a morning-after follow-up and ledger rows. Drafts only; never sends."
 ---
 
 # Event Matchmaking

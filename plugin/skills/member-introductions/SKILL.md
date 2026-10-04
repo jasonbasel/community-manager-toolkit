@@ -1,6 +1,6 @@
 ---
 name: member-introductions
-description: "Member introductions for community managers: consent-first, double opt-in warm intros between members of a professional network, association, alumni group, club or cohort. Use when someone asks to introduce two members, make a warm intro, find who in the community could help with something, handle an intro or connection request from WhatsApp, Slack, Discord or email, do networking matchmaking between members, or follow up on past introductions. Screens out sales pitches, confirms identity, ranks three candidates, drafts the consent ask, connection message, lapse notice and follow-up checks, and keeps an intro ledger with next-check dates. Drafts only; never sends."
+description: "Member introductions for community managers. Use this skill whenever someone asks to introduce two people, wants a warm intro, asks who in their community could help someone or who to introduce a member to, shares an intro or connection request (from WhatsApp, Slack, Discord, email or a list of requests), wants a consent message drafted, wants intro ledger rows, or asks to follow up on past introductions, even if they don't say 'introduction'. It holds the double opt-in consent flow, identity checks, same-organisation exclusion, cooldowns, the sales-pitch screen and tested message shapes. Ranks candidates with a runner-up, drafts the consent ask, connection message, lapse notice and follow-ups, and keeps the ledger with next-check dates. Drafts only; never sends."
 ---
 
 # Member Introductions

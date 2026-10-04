@@ -85,7 +85,7 @@ const DATE_STAMP = /^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/;
  * A source label (or ID prefix) that carries a contact detail: an email, link or phone shape anywhere in it, or a run of
  * seven or more digits ("whatsapp-447700900311") that is not a date stamp. Such a label is never echoed.
  */
-const DATE_TIME_TOKENS = /\b(?:\d{1,2}[-./]\d{1,2}[-./](?:\d{4}|\d{2})|\d{4}[-./]\d{1,2}[-./]\d{1,2})(?:[ T-]?\d{1,2}[.:]\d{2}(?:[.:]\d{2})?)?\b|\b\d{1,2}[.:]\d{2}(?:[.:]\d{2})?\b/g;
+const DATE_TIME_TOKENS = /(?<!\d[-./ ]?)\b(?:(?:\d{1,2}[-./]\d{1,2}[-./](?:\d{4}|\d{2})|\d{4}[-./]\d{1,2}[-./]\d{1,2})(?:[ T-]?\d{1,2}[.:]\d{2}(?:[.:]\d{2})?)?|\d{1,2}[.:]\d{2}(?:[.:]\d{2})?)\b(?![-./ ]?\d)/g;
 export const labelHasContact = (label: string): boolean => {
   if (idContactKind(label) || findPhones(label).length > 0) return true;
   // Dates and times ("event-30-09-2026", "luma 2026-09-30 14.05") are not phone numbers: drop them first. Then join digit
@@ -148,8 +148,9 @@ export function mergeMemberRecords(input: MergeInput) {
   const droppedIds: number[] = [];
 
   // ---- 1. prepare ----
-  const masked = new Map<string, string>();
-  const maskedName = (orig: string) => { let n = masked.get(orig); if (!n) { n = `masked-source-${masked.size + 1}`; masked.set(orig, n); } return n; };
+  // Masked names are numbered by the sorted distinct labels, so reordering the records never renumbers them.
+  const maskedOrder = [...new Set(input.records.map((r) => String(r.source ?? "")).filter(labelHasContact).map((l) => sourceLabel(l)))].sort();
+  const maskedName = (orig: string) => `masked-source-${maskedOrder.indexOf(orig) + 1}`;
   const recs: Prep[] = input.records.map((r, i) => {
     // A source label that carries a contact detail ("+44 7700 900999", "whatsapp-447700900311") would be echoed in source_ids and by_source.
     const unsafeSource = labelHasContact(String(r.source ?? ""));
@@ -187,7 +188,8 @@ export function mergeMemberRecords(input: MergeInput) {
       // checked for emails and links (they contain ":"), and a prefix carrying a contact detail drops the ID too.
       const own = !!prefix && (isPlatformPrefix(prefix) || sourceLabel(prefix) === originalSource);
       const labels = own ? [prefix] : [prefix, originalSource].filter(Boolean);
-      if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { labels, handles: true }) || (prefix && labelHasContact(prefix))) { dropped = true; return; }
+      if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { labels, handles: true }) || (prefix && labelHasContact(prefix))
+        || (unsafeSource && (isPhoneLike(value) || /^\+?\d{9,15}$/.test(value.replace(/[\s\-().]/g, ""))))) { dropped = true; return; }
       ids.push(colon >= 0 && (listed || own) ? s : `${source}:${s}`);
     };
     addId(r.source_id, false);

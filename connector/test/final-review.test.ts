@@ -105,3 +105,24 @@ describe("genuine opt-outs survive the widened reporting canceller", () => {
     for (const n of ["Hasn't replied to the intro yet", "Did not respond to the consent ask", "Email bounced, number not valid", "Not responding to emails"]) expect(signal(n), n).toBe(false);
   });
 });
+
+describe("last regression check of f976cfe", () => {
+  it("wishes are refusals even next to reply/engage words", () => {
+    for (const n of ["Doesn't wish to engage with outreach", "Doesn't want to reply to intros"]) expect(signal(n), n).toBe(true);
+  });
+  it("phones written in pairs are not mistaken for dates", () => {
+    expect(labelHasContact("WhatsApp Chat with 06.12.34.56.78.txt")).toBe(true);
+    expect(labelHasContact("event-30-09-2026")).toBe(false);
+  });
+  it("under a phone-bearing label a phone-shaped ID is dropped; masked names don't depend on record order", async () => {
+    const { mergeMemberRecords } = await import("../src/tools/merge.js");
+    const a = { source: "Chat - 07700 900322 - export.txt", source_id: "447700900322", name: "Bo Chan" };
+    const b = { source: "Chat - 07700 900333 - export.txt", source_id: "U0ABC", name: "Cy Dee" };
+    const o1 = mergeMemberRecords({ records: [a, b] }), o2 = mergeMemberRecords({ records: [b, a] });
+    expect(JSON.stringify(o1)).not.toContain("447700900322");
+    // Masked source names are stable under reordering (keyless records keep position-based member_ids by design).
+    expect(Object.keys(o1.stats.by_source).sort()).toEqual(Object.keys(o2.stats.by_source).sort());
+    const labelOf = (o: ReturnType<typeof mergeMemberRecords>, name: string) => o.members.find((m) => m.name === name)!.source_ids;
+    expect(labelOf(o1, "Cy Dee")).toEqual(labelOf(o2, "Cy Dee"));
+  });
+});

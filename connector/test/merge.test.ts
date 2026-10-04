@@ -1,6 +1,6 @@
 /** merge_member_records unit tests (DESIGN §4.2 rules). */
 import { describe, expect, it } from "vitest";
-import { MAX_UNCERTAIN, mergeMemberRecords, type MergeRecord } from "../src/tools/merge.js";
+import { MAX_UNCERTAIN, mergeMemberRecords, sourceLabel, type MergeRecord } from "../src/tools/merge.js";
 
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
 const m = (records: MergeRecord[], extra: Record<string, unknown> = {}) => mergeMemberRecords({ records, today: "2026-10-02", ...extra });
@@ -268,6 +268,40 @@ describe("source IDs judged by their prefix and the record's source (round-2 4)"
     expect(ids({ source: "tel-aviv-chapter", name: "Gus Hart", source_id: "12345678" })).toEqual(["tel-aviv-chapter:12345678"]);
     expect(ids({ source: "slack-threads", name: "Hana Ito", source_id: "U0HANA1" })).toEqual(["slack-threads:U0HANA1"]);
     expect(ids({ source: "mobile", name: "Ivo Jay", source_id: "4155550100" })).toEqual(["mobile"]);
+  });
+});
+
+describe("source IDs judged by the words of their prefix and source, in source_id too (round-3 5)", () => {
+  const ids = (rec: MergeRecord) => m([rec]).members[0]?.source_ids ?? [];
+  it("reads label:value in the single source_id field and drops phone-labelled values whatever their shape", () => {
+    for (const id of ["mobile_phone:447700900123", "phone_number:447700900124", "wa:447700900125", "whatsapp:447700900126", "tel:447700900127", "msisdn:447700900128",
+      "WhatsApp:+44 7700 900129", "mobile number:07700 900130", "sms:447700900131", "phone_number:1234567", "Mobile Phone:12345", "tel:bo chan", "wa_id:447700900132"]) {
+      const o = m([{ source: "hubspot", name: "Ann Lee", source_id: id }]);
+      expect(JSON.stringify(o), id).not.toMatch(/7700|1234567|12345|bo chan/);
+      expect(o.members[0].source_ids, id).toEqual(["hubspot"]);
+      expect(o.warnings.join(" "), id).toMatch(/Source IDs that looked like contact details/);
+    }
+  });
+  it("drops every bare or generically prefixed ID of a phone-channel source, matched as whole words or segments", () => {
+    for (const source of ["WA group", "WhatsApp export", "sms", "SMS list", "mobile_phone", "Phone numbers", "WhatsAppExport", "whatsapp", "mobile number", "iMessage thread", "msisdn_list"]) {
+      const o = m([{ source, name: "Bo Chan", source_id: "447700900456", source_ids: ["id:447700900457", "12345678", "ref:ABC123"] }]);
+      expect(JSON.stringify(o), source).not.toMatch(/4477009004|12345678|ABC123/);
+      expect(o.members[0].source_ids, source).toEqual([sourceLabel(source)]);
+    }
+  });
+  it("keeps numeric platform IDs when neither prefix nor source is phone-like, with no country-code guess", () => {
+    expect(ids({ source: "hubspot", name: "Cleo Dunn", source_id: "447700900456" })).toEqual(["hubspot:447700900456"]); // a record ID that happens to start 44
+    expect(ids({ source: "hubspot", name: "Cleo Dunn", source_id: "51203400243" })).toEqual(["hubspot:51203400243"]);
+    expect(ids({ source: "discord", name: "Dara Eze", source_id: "113693792436467651" })).toEqual(["discord:113693792436467651"]);
+    expect(ids({ source: "slack", name: "Eli Fox", source_id: "U0ABC123", source_ids: ["hubspot:51203400243"] })).toEqual(["hubspot:51203400243", "slack:U0ABC123"]);
+    expect(ids({ source: "WhatsApp export", name: "Fen Gill", source_ids: ["slack:U0ABC123", "discord:113693792436467651"] })).toEqual(["discord:113693792436467651", "slack:U0ABC123"]); // a platform prefix keeps its own meaning
+    expect(ids({ source: "mobile-app", name: "Gus Hart", source_id: "4155550100" })).toEqual(["mobile-app:4155550100"]);
+    expect(ids({ source: "tel-aviv-chapter", name: "Hana Ito", source_id: "12345678" })).toEqual(["tel-aviv-chapter:12345678"]);
+    expect(ids({ source: "slack", name: "Ivo Jay", source_id: "slack:U0IVO" })).toEqual(["slack:U0IVO"]); // own platform prefix is not doubled
+    expect(ids({ source: "linkedin", name: "Juno Kay", source_id: "urn:li:person:AbC12345" })).toEqual(["linkedin:urn:li:person:AbC12345"]);
+  });
+  it("still drops phone-shaped values under any label", () => {
+    for (const id of ["+44 7700 900789", "07700 900789", "(415) 555-0100", "44 7700 900789", "0044 7700 900789"]) expect(ids({ source: "hubspot", name: "Kit Lam", source_id: id }), id).toEqual(["hubspot"]);
   });
 });
 

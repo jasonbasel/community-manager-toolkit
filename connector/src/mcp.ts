@@ -50,7 +50,7 @@ export const TOOL_TEXT = {
   },
   plan_week: {
     title: "Plan the community week",
-    description: "Builds a prioritised plan of at most seven items for the coming week from the intro ledger, events in the next 14 days, new members and optional engagement segments: removal requests, overdue intro answers and lapse notices, follow-through and outcome checks, events to match or invite, new members to welcome, a small re-engagement batch, and an impact report after a month or quarter ends. Runs one spacing check across the whole plan (one proactive touch per person in 7 days, at least 72 hours apart, opted-out people excluded) and reports what it moved. Use it for a weekly review or when a manager asks what to do this week. Nothing is stored.",
+    description: "Builds a prioritised plan of at most seven items for the coming week from the intro ledger, events in the next 14 days, new members and optional engagement segments: removal requests, overdue intro answers and lapse notices, follow-through and outcome checks, events to match or invite, new members to welcome, a small re-engagement batch, and an impact report after a month or quarter ends. Runs one spacing check across the whole plan (one proactive touch per person in 7 days, at least 72 hours apart, opted-out people excluded) and reports what it moved. Ledger rows may carry opted_out and removal_request (requester, target, both or none) read from their notes; without them, any opt-out or removal wording in a note holds both people in that row and flags it for the manager to confirm. Use it for a weekly review or when a manager asks what to do this week. Nothing is stored.",
   },
   compute_impact_metrics: {
     title: "Compute impact metrics",

@@ -1,15 +1,29 @@
 /** Text normalisation shared by every tool. Pure functions; no I/O. */
 import { DISPLAY_SUFFIXES, MATCH_PREFIXES, MATCH_SUFFIXES } from "../data/organisations.js";
-import { BARE_COUNTRY_CODES, HANDLE_ID_LABELS, HANDLE_ID_WORDS, PHONE_ID_LABELS, PHONE_ID_WORDS, PLACEHOLDER_NAMES, PLACEHOLDER_TOKENS } from "../data/contacts.js";
+import {
+  BARE_COUNTRY_CODES, HANDLE_ID_LABELS, HANDLE_ID_WORDS, PHONE_ID_LABELS, PHONE_ID_NUMBER_WORDS, PHONE_ID_QUALIFIERS, PHONE_ID_STEMS, PHONE_ID_WORDS, PLACEHOLDER_NAMES,
+  PLACEHOLDER_TOKENS,
+} from "../data/contacts.js";
 import { DOMAIN_ALIASES, DOTLESS_DOMAINS, PERSONAL_EMAIL_DOMAINS, ROLE_LOCAL_PARTS } from "../data/email-domains.js";
 import { SENSITIVE_TERMS } from "../data/sensitive-terms.js";
 import { NICKNAME_GROUPS } from "../data/people.js";
 
-/** Lowercase and strip accents. */
-export const fold = (s: string): string => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+/**
+ * Lowercase; strip accents from Latin letters only ("Zoë" → "zoe"), since in other scripts a mark can be part
+ * of the letter ("й" is not "и"). Compatibility decomposition first, so ligatures and full-width forms fold too.
+ */
+export const fold = (s: string): string => s.normalize("NFKD").replace(/([A-Za-z])[̀-ͯ]+/g, "$1").normalize("NFC").toLowerCase();
 
-/** Lowercase, accents and punctuation removed, single spaces. "Ifeoma Adeyemi-Brandt" → "ifeoma adeyemi brandt". */
-export const plain = (s: string): string => fold(s).replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
+/** Apostrophes in every common form; dropped (not turned into spaces) so "O'Brien" and "OBrien" normalise alike. */
+export const APOSTROPHES = /['’‘`´ʼʻ]/g;
+
+/**
+ * Lowercase, accents, apostrophes and punctuation removed, single spaces; letters and digits of every
+ * script are kept, so a non-Latin name never normalises to "". "Ifeoma Adeyemi-Brandt" → "ifeoma adeyemi brandt",
+ * "O'Brien" → "obrien", "李明" → "李明".
+ */
+export const plain = (s: string): string =>
+  fold(s).replace(APOSTROPHES, "").replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim().normalize("NFC");
 
 const HONORIFICS = new Set(["mr", "mrs", "ms", "miss", "mx", "dr", "prof", "professor", "sir", "dame", "lord", "lady", "rev"]);
 
@@ -173,10 +187,21 @@ export function isUrlLike(s: string): boolean {
 
 export type ContactKind = "email" | "phone" | "link" | "handle";
 const phoneWords = new Set(PHONE_ID_WORDS), phoneLabels = new Set(PHONE_ID_LABELS), handleWords = new Set(HANDLE_ID_WORDS), handleLabels = new Set(HANDLE_ID_LABELS);
+const phoneQualifiers = new Set(PHONE_ID_QUALIFIERS), numberWords = new Set(PHONE_ID_NUMBER_WORDS);
+/** Whole words or segments of a label: "mobile_phone" → [mobile, phone], "WA group" → [wa, group]. */
 const labelWords = (label: string) => fold(label).split(/[^a-z0-9]+/).filter(Boolean);
 const wholeLabel = (label: string) => fold(label).replace(/[^a-z0-9]/g, "");
-/** A source name or ID prefix whose IDs are phone numbers: WhatsApp, SMS, msisdn; "wa", "tel", "mobile" only as the whole label. */
-export const isPhoneLabel = (label: string): boolean => labelWords(label).some((w) => phoneWords.has(w)) || phoneLabels.has(wholeLabel(label));
+/**
+ * A source name or ID prefix whose IDs are phone numbers: a phone word anywhere in it ("whatsapp:", "mobile_phone",
+ * "phone_number", "WA group", "sms"), a long stem even when glued ("WhatsAppExport"), a generic label on its own
+ * ("tel", "mobile"), or a qualifier with a number word ("mobile number"). Short generic words never match inside
+ * other labels, so "mobile-app" and "tel-aviv-chapter" are not phone labels.
+ */
+export const isPhoneLabel = (label: string): boolean => {
+  const words = labelWords(label), whole = wholeLabel(label);
+  return words.some((w) => phoneWords.has(w)) || PHONE_ID_STEMS.some((st) => whole.includes(st)) || phoneLabels.has(whole)
+    || (words.some((w) => phoneQualifiers.has(w)) && words.some((w) => numberWords.has(w)));
+};
 /** A source name or ID prefix whose values are social handles or profile slugs: LinkedIn, Telegram, Instagram; "x" only as the whole label. */
 export const isHandleLabel = (label: string): boolean => labelWords(label).some((w) => handleWords.has(w)) || handleLabels.has(wholeLabel(label));
 

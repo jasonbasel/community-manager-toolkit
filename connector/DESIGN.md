@@ -73,6 +73,18 @@ Map any export's columns to the canonical fields.
   Mailchimp / Kit / beehiiv / MailerLite exports (opt-in status columns), Luma guests,
   Eventbrite attendee report, LinkedIn connections export, WhatsApp is text (not here).
   Alias tables live in `src/fields/` as data, with tests per platform.
+- Echo rule: a header string is repeated only when it is in the known header vocabulary
+  (alias tables, ignored headers, platform columns, contact / sensitive / engagement
+  patterns, question phrases) and is not itself a data value. Every other column is called
+  `column N` (1-based), and every mapping, unmapped, contact and sensitive entry carries
+  `index`, so the first data row of a headerless export can never be echoed even when the
+  row-level check does not fire. Sample values are returned only when they are consent or
+  status vocabulary; the rest are counted.
+- Sensitive headers are matched as whole words and specific phrases (health status /
+  condition, medical, diagnosis, disability, pregnan*, religio*, ethnic*, race, sexual
+  orientation, gender identity, marital, relationship status, plus gender, pronouns, date of
+  birth, dietary …), never as stems inside other words: "Industry (e.g. Healthcare)",
+  "Healthtech focus", "Diagnostics" and "Relationship owner" are not flagged.
 
 ### 4.2 `merge_member_records`
 Merge records from several sources into one directory without contact details.
@@ -90,6 +102,16 @@ Merge records from several sources into one directory without contact details.
     platforms; asks and offers from forms > notes > chat (chat-derived stays `inferred`);
     `last_active` = latest across sources with its source; `joined` = earliest;
     `opted_in` = most restrictive explicit value (any "no" wins).
+  - Source IDs: `label:value` is parsed in `source_id` as well as in `source_ids`. An ID is
+    dropped (never echoed; the record index is named in a warning) when its own prefix or
+    the record's source label contains a phone / WhatsApp / SMS word, matched as whole
+    words or segments (`mobile_phone:`, `phone_number:`, `wa:`, `whatsapp:`, `tel:`,
+    `msisdn:`, source "WA group", "WhatsApp export", "sms"), when the value is phone-shaped
+    (leading `+`, separators, trunk 0), an email address, a link, or a handle under a
+    social label. No country-code list is involved: a bare number under a non-phone source
+    (HubSpot record IDs, Discord snowflakes, Slack `U…` IDs) is a platform ID and kept, and
+    a prefix that names a platform (`slack:`, `discord:`) keeps its own meaning whatever
+    the record's source.
 - Out: `members` (directory columns from DESIGN.md v0.2 A1: `member_id, name,
   organisation, role, location, email_domain, source_ids, status, joined, last_active,
   last_active_source, asks, offers, tags, opted_in, opt_in_source, profile_quality,
@@ -133,13 +155,33 @@ Pair event guests fast, with backups, under hard rules.
 ### 4.5 `plan_week`
 - In: `today`, `ledger` rows (compact), `events` (next 14 days), `new_members`,
   optional `segments`, `planned_touches`.
-- Priority: overdue answers / lapse notices → follow-through and outcome checks due →
-  events in the next 14 days not yet matched (sooner first) → new members not welcomed
-  (≤30 days) → a re-engagement batch → impact report if a month or quarter just ended.
+- Opt-outs and removal requests (guardrails §12): each ledger row may carry `opted_out`
+  and `removal_request`, each `requester | target | both | none`, set by the caller after
+  reading the note. When set they are authoritative. When a field is not set, the server
+  never attributes the note to a person by name: if the note contains any opt-out or
+  removal wording (table in `src/data/consent-signals.ts`: DNC, do not contact / message /
+  email, opted out, unsubscribe(d), stop messaging, no more messages, doesn't want to be
+  contacted, remove me, delete my data / details / information, erase / redact, forget me,
+  GDPR erasure / removal …; clauses split on `. ; : ! ? — – - ( ) [ ] /` and "and", "but",
+  "then"; a negator cancels only "not / no longer opted out", "never unsubscribed" and
+  "don't forget") it holds BOTH people of the row, adds the row to the removal / opt-out
+  item with "confirm who it refers to", and lists it in `needs_review`. A false positive
+  holds two people until the manager confirms; a false negative would drop an opt-out.
+  `opted_in` on `new_members`, `events.people`, `segments` and `planned_touches` applies as
+  before, and people are one identity across inputs (ids and Unicode-aware name keys that
+  keep non-Latin letters and drop apostrophes consistently).
+- Priority: removal / opt-out requests → overdue answers / lapse notices → follow-through
+  and outcome checks due → events in the next 14 days not yet matched (sooner first) →
+  new members not welcomed (≤30 days) → a re-engagement batch → impact report if a month
+  or quarter just ended.
 - Spacing: no member gets two proactive touches in 7 days or two within 72 hours; return
   conflicts with the resolution applied.
 - Out: `items` (≤7 default) `{kind, title, why_now, people, due, suggested_prompt}`,
-  `spacing_conflicts`, `held`.
+  `spacing_conflicts`, `held` (a hold for an unattributed note reads "opt-out note found —
+  confirm who it refers to"), `needs_review [{row, intro_id, requester, target,
+  needs_review: true, signals, reason}]` (rule ids only, never note text), `stats`
+  (incl. `opted_out`, `needs_review`). All additions are new fields; nothing existing
+  changed shape.
 
 ### 4.6 `compute_impact_metrics`
 - In: `period {start, end}`, `ledger` rows (`intro_id, created, source, status,

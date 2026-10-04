@@ -157,12 +157,24 @@ describe.runIf(hasFixture("ledger.csv"))("compute_impact_metrics matches ledger.
 });
 
 describe.runIf(["ledger.csv", "members.csv", "events_upcoming.csv"].every(hasFixture))("plan_week on the wr-01 week (2 October 2026)", () => {
-  const ledger = readCsv("ledger.csv"), members = readCsv("members.csv"), events = readCsv("events_upcoming.csv");
+  const raw = readCsv("ledger.csv"), members = readCsv("members.csv"), events = readCsv("events_upcoming.csv");
+  // The skill reads each opt-out note and says who it refers to; both fixture notes begin "Target asked …".
+  const ledger = raw.map((r) => (/^target asked/i.test(r.notes) ? { ...r, opted_out: "target", removal_request: "none" } : r));
   const invitees = members.map((m) => m.name).filter((n) => events[1].notes.includes(n));
   const out = planWeek({ today: "2026-10-02", ledger, new_members: members.map((m) => ({ name: m.name, joined: m.joined })), events: [
     { name: events[0].event, starts_at: `${events[0].date}T${events[0].start_time}`, matched: false },
     { name: events[1].event, starts_at: `${events[1].date}T${events[1].start_time}`, invitations_sent: false, people: invitees },
   ] });
+  it("without the skill's attribution, both people of each opt-out row are held and the rows are listed to confirm", () => {
+    const o = planWeek({ today: "2026-10-02", ledger: raw });
+    expect(o.needs_review.map((r) => r.intro_id)).toEqual(["20260818-wendell-hyacinth", "20260902-leopold-jasper"]);
+    expect(o.stats).toMatchObject({ opted_out: 4, needs_review: 2 });
+    const touched = o.items.flatMap((i) => i.people);
+    for (const p of ["Wendell Okonkwo-Hale", "Hyacinth Rowntree", "Leopold Vanterpool", "Jasper Nkemelu"]) expect(touched, p).not.toContain(p);
+    expect(o.items[0].kind).toBe("removal_requests");
+    expect(out.needs_review).toEqual([]);
+    expect(out.stats.opted_out).toBe(2);
+  });
   it("has at most seven items covering overdue asks, checks, events, welcomes and the Q3 report", () => {
     expect(out.items.length).toBeLessThanOrEqual(7);
     const ids = out.items.flatMap((i) => i.intro_ids ?? []);

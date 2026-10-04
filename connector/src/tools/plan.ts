@@ -11,18 +11,30 @@
  * are joined), so an opt-out or a recent touch counts whichever form each input uses. Item text is
  * written after the spacing and opt-out check: it never names someone who opted out, and its
  * prompt lists only the people still in it.
+ * Opt-outs and removal requests in ledger notes (guardrails §12): the caller has read the note and
+ * sets `opted_out` and `removal_request` to requester | target | both | none; those are authoritative.
+ * Without them the server never guesses from names: any opt-out or removal wording in the note holds
+ * BOTH people of the row, flags the row in `needs_review`, and asks the manager to confirm who it
+ * refers to. A false positive holds two people for a week; a false negative would drop an opt-out.
  */
-import { AMBIGUOUS_NAME_WORDS } from "../data/people.js";
-import { addDays, cmp, daysBetween, isPlaceholderName, nameKey, parseDate, parseInstant, plain } from "../text/normalise.js";
+import { addDays, cmp, daysBetween, isPlaceholderName, nameKey, parseDate, parseInstant } from "../text/normalise.js";
+import { findConsentSignals, isActioned } from "../text/consent.js";
 import { InputError } from "./errors.js";
 import { nextAllowed, optInValue } from "./segment.js";
 
 type OptIn = boolean | string | null;
+/** Who a ledger note refers to, as read by the caller. */
+export type Party = "requester" | "target" | "both" | "none";
+export const PARTIES: readonly Party[] = ["requester", "target", "both", "none"];
 export interface PersonRef { id?: string | null; name?: string | null; opted_in?: OptIn }
 export interface PlanLedgerRow {
   intro_id?: string | null; created?: string | null; source?: string | null; event?: string | null; requester?: string | null; target?: string | null;
   status?: string | null; asked_on?: string | null; answered_on?: string | null; connected_on?: string | null; outcome?: string | null;
   next_check?: string | null; notes?: string | null;
+  /** Who opted out of messages according to the note (authoritative when set). */
+  opted_out?: Party | string | null;
+  /** Who asked for information to be removed or forgotten (authoritative when set). */
+  removal_request?: Party | string | null;
 }
 export interface PlanInput {
   today: string;
@@ -36,43 +48,15 @@ export interface PlanInput {
 export interface PlanItem {
   priority: number; kind: string; title: string; why_now: string; people: string[]; due: string; suggested_prompt: string; intro_ids?: string[];
 }
-
-/** Opt-outs of messages (guardrails §12): no more proactive touches, whoever relays them. */
-const OPT_OUT_RE = new RegExp([
-  String.raw`\bopt(?:ed|s|ing)?[- ]?out\b`, String.raw`\bunsubscrib\w*`, String.raw`\bdnc\b`,
-  String.raw`\b(?:do not|don't|dont|never)(?: ever| again)? (?:contact|message|email|e-mail|call|text|approach|introduce)\w*`,
-  String.raw`\bno (?:more|further) (?:contact|messages|emails|intros?|introductions|outreach)\b`,
-  String.raw`\bstop(?:ped)? (?:messag|contact|email|text)\w*`, String.raw`\bnot to (?:be contacted|be messaged|receive|contact|message|email)\b`,
-  String.raw`\bremove[ds]? (?:them |him |her |me )?from\b`, String.raw`\basked to be removed\b`,
-  String.raw`\bwithdr[ae]w\w* (?:their |his |her |my )?consent\b`, String.raw`\bconsent (?:was )?withdrawn\b`,
-  // erasure of the person (not just of something they said)
-  String.raw`\b(?:delete|erase|remove)\w* (?:all )?(?:my|their|his|her) (?:personal )?(?:data|account|profile|records?|contact details|personal details|personal information)\b`,
-  String.raw`\berasure\b`, String.raw`\b(?:right to be|wants? to be|asked to be|asks to be) forgotten\b`,
-  String.raw`\bforget (?:me|them|him|her)\b(?! (?:notes?|details|information|info|comments?|story|data|project|startup|company|idea|plans?)\b)`,
-].join("|"), "gi");
-/** Removal of information (guardrails §12): stop using it and record only the category. Not an opt-out on its own. */
-const REMOVAL_RE = new RegExp([
-  String.raw`\bremoval\b`, String.raw`\bredact\w*`, String.raw`\bforget(?:ting)?\b`, String.raw`\bforgotten\b`, String.raw`\b(?:remove|delete|erase|forget) what\b`,
-  // delete, erase or remove personal notes, details, data or information
-  String.raw`\b(?:remove|delete|erase)(?:s|d|ed|ing)?\b(?: \w+){0,4}? (?:notes?|details|information|info|comments?|story|stories|data|records?|messages?|quotes?|answers?|bio)\b`,
-  String.raw`\b(?:do not|don't|dont) (?:use|share|repeat|mention)\b`, String.raw`\bstop using\b`, String.raw`\bnot to be (?:used|shared|repeated|mentioned)\b`,
-].join("|"), "gi");
-/** A negation shortly before a phrase cancels it ("don't forget her", "did not opt out"); phrases that are negations themselves stand. */
-const NEGATIONS = new Set(["not", "no", "never", "dont", "didnt", "doesnt", "wont", "cant", "cannot", "isnt", "wasnt", "arent", "werent", "hasnt", "havent", "hadnt", "shouldnt", "wouldnt", "nor", "without"]);
-const SELF_NEGATED = /^(?:do not|don't|dont|never|not|no)\b/i;
-function hasPhrase(note: string, re: RegExp): boolean {
-  re.lastIndex = 0;
-  for (const m of note.matchAll(re)) {
-    if (SELF_NEGATED.test(m[0])) return true;
-    const clause = note.slice(Math.max(0, m.index - 60), m.index).split(/[.;:!?,\n]/).pop() ?? "";
-    const before = clause.toLowerCase().replace(/'/g, "").split(/[^a-z]+/).filter(Boolean).slice(-3);
-    if (!before.some((w) => NEGATIONS.has(w))) return true;
-  }
-  return false;
+/** A ledger row whose note records an opt-out or removal request without saying who it refers to. */
+export interface ReviewRow {
+  row: number; intro_id: string | null; requester: string; target: string; needs_review: true;
+  /** Ids of the wording rules that fired (never the note text). */
+  signals: string[]; reason: string;
 }
-const ACTIONED_RE = /\b(honou?red|actioned|done|processed|completed)\b/i;
-const REQUESTER_WORD = /\b(?:request(?:er|or)s?|seekers?|askers?)\b/;
-const TARGET_WORD = /\b(?:targets?|introduc(?:t)?ees?)\b/;
+
+/** Held because the note doesn't say who opted out: the reason every such hold starts with (summaries key on it). */
+export const UNCLEAR_OPT_OUT = "opt-out note found — confirm who it refers to";
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const nice = (iso: string) => { const d = new Date(iso + "T00:00:00Z"); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()].slice(0, 3)}`; };
@@ -80,11 +64,14 @@ const list = (xs: string[], max = 6) => (xs.length <= max ? xs.join(", ") : `${x
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const st = (r: PlanLedgerRow) => String(r.status ?? "").trim().toLowerCase();
 const outcomeUnknown = (r: PlanLedgerRow) => { const o = String(r.outcome ?? "").trim().toLowerCase(); return !o || o === "unknown" || o === "not yet"; };
+/** A caller-set party, or undefined when missing or not one of the four values (then the note decides, conservatively). */
+const party = (v: unknown): Party | undefined => { const s = String(v ?? "").trim().toLowerCase(); return (PARTIES as readonly string[]).includes(s) ? (s as Party) : undefined; };
 
 /**
  * One identity per person: ids ("i:…") and normalised names ("n:…") are joined whenever one
  * reference carries both, or a bare string (which may be either) is used. Placeholder names
- * ("Unknown", initials) never join anyone.
+ * ("Unknown", initials) never join anyone, and a name is only ever a key when it normalises to
+ * something (non-Latin names keep their letters; punctuation-only names get an identity of their own).
  */
 class People {
   private parent = new Map<string, string>();
@@ -133,35 +120,6 @@ class People {
   label(k: string): string { return this.best.get(this.find(k))?.label ?? k; }
 }
 
-const ambiguousWords = new Set(AMBIGUOUS_NAME_WORDS);
-const distinctive = (t: string) => t.length >= 2 && !ambiguousWords.has(t);
-/** A note's words with apostrophes dropped first ("don't" → "dont", never "don"), padded for whole-word search. */
-const noteWords = (note: string) => ` ${plain(note.replace(/['’‘`]/g, ""))} `;
-/** Named strongly enough to attribute an opt-out: the full name or the surname; a one-word name only if it isn't an ordinary word, month or weekday. */
-function namedIn(text: string, who: string): boolean {
-  const toks = nameKey(who).split(" ").filter(Boolean);
-  const has = (p: string) => text.includes(` ${p} `);
-  if (toks.length < 2) return toks.length === 1 && distinctive(toks[0]) && has(toks[0]);
-  if (has(toks.join(" "))) return true;
-  const last = toks[toks.length - 1];
-  return (toks.length > 2 && has(toks.slice(1).join(" "))) || (distinctive(last) && has(last));
-}
-/** Any word of the person's name in the note, even a bare first name or an ordinary word: enough to make the note unclear. */
-const touchedIn = (text: string, who: string) => nameKey(who).split(" ").some((t) => t.length >= 2 && text.includes(` ${t} `));
-/**
- * Which side of an intro an opt-out note is about: a role word ("requester", "target"), else one person's full name or
- * surname with no word of the other person's name in the note. Anything else holds both people.
- */
-function optOutParty(note: string, r: PlanLedgerRow): "requester" | "target" | "both" {
-  const text = noteWords(note);
-  const roleR = REQUESTER_WORD.test(text), roleT = TARGET_WORD.test(text);
-  if (roleR !== roleT) return roleR ? "requester" : "target";
-  const strongR = namedIn(text, r.requester!), strongT = namedIn(text, r.target!);
-  if (strongR && !strongT && !touchedIn(text, r.target!)) return "requester";
-  if (strongT && !strongR && !touchedIn(text, r.requester!)) return "target";
-  return "both";
-}
-
 export function planWeek(input: PlanInput) {
   const today = parseDate(input.today);
   if (!today) throw new InputError(`today '${input.today}' is not a date; use YYYY-MM-DD`);
@@ -171,6 +129,10 @@ export function planWeek(input: PlanInput) {
   ledger.forEach((r, i) => {
     if (!r.requester || !String(r.requester).trim()) throw new InputError(`ledger[${i}].requester is missing`);
     if (!r.target || !String(r.target).trim()) throw new InputError(`ledger[${i}].target is missing`);
+    for (const f of ["opted_out", "removal_request"] as const) {
+      const v = r[f];
+      if (v != null && String(v).trim() !== "" && party(v) === undefined) throw new InputError(`ledger[${i}].${f} must be requester, target, both or none`);
+    }
   });
 
   // ---- one identity map across every input ----
@@ -200,23 +162,35 @@ export function planWeek(input: PlanInput) {
   // ---- opt-outs and removal requests ----
   const optedOut = new Map<string, string>();
   const markOut = (root: string, reason: string) => { const k = R(root); if (!optedOut.has(k)) optedOut.set(k, reason); };
-  const removals: PlanLedgerRow[] = [];
-  for (const { r, req, tgt } of rows) {
-    const n = String(r.notes ?? "").replace(/[’‘`]/g, "'");
-    const optOut = hasPhrase(n, OPT_OUT_RE);
-    if (!optOut && !hasPhrase(n, REMOVAL_RE)) continue;
-    if (!ACTIONED_RE.test(n)) removals.push(r);
-    if (!optOut) continue; // removal of information: stop using it, but the person can still be contacted
-    const where = `ledger ${r.intro_id ?? "row"}`;
-    const who = optOutParty(n, r);
-    if (who === "both") { markOut(req, `opted out (${where}; the note doesn't say who, so both people are held until you confirm)`); markOut(tgt, `opted out (${where}; the note doesn't say who, so both people are held until you confirm)`); }
-    else markOut(who === "requester" ? req : tgt, `opted out (${where})`);
-  }
+  const removals: { r: PlanLedgerRow; unclear: boolean }[] = [];
+  const needs_review: ReviewRow[] = [];
+  rows.forEach(({ r, req, tgt }, i) => {
+    const note = String(r.notes ?? "");
+    const outField = party(r.opted_out), remField = party(r.removal_request);
+    // The note is read only for the fields the caller did not set; it is never attributed to a person by name.
+    const sig = outField === undefined || remField === undefined ? findConsentSignals(note) : { opt_out: [], removal: [] };
+    const signalled = sig.opt_out.length > 0 || sig.removal.length > 0;
+    const who: Party = outField ?? (signalled ? "both" : "none");
+    const unclear = outField === undefined && signalled;
+    const removal = remField !== undefined ? remField !== "none" : signalled;
+    const where = `ledger ${r.intro_id ?? `row ${i + 1}`}`;
+    if (unclear) needs_review.push({
+      row: i, intro_id: r.intro_id ?? null, requester: r.requester!, target: r.target!, needs_review: true, signals: [...sig.opt_out, ...sig.removal],
+      reason: "the note records an opt-out or removal request without saying who it refers to; both people are held until you confirm",
+    });
+    // Anything still to action: an open request, or a request whose subject the manager must confirm (even if the note says it was honoured).
+    if ((removal || who !== "none") && (unclear || !isActioned(note))) removals.push({ r, unclear });
+    if (who === "none") return;
+    const reason = unclear ? `${UNCLEAR_OPT_OUT} (${where}; both people are held until you do)` : `opted out (${where})`;
+    if (who !== "target") markOut(req, reason);
+    if (who !== "requester") markOut(tgt, reason);
+  });
   for (const { s, root } of segs) if (optInValue(s.opted_in) === "no") markOut(root, "opted out (segments)");
   for (const { m, root } of newMembers) if (optInValue(m.opted_in) === "no") markOut(root, "opted out (new_members)");
   eventPeople.forEach((ps, i) => { for (const p of ps) if (optInValue(p.opted_in) === "no") markOut(p.root, `opted out (events[${i}])`); });
   for (const { p, root } of planned) if (optInValue(p.opted_in) === "no") markOut(root, "opted out (planned_touches)");
   const isOut = (root: string) => optedOut.has(R(root));
+  const isUnclear = (root: string) => (optedOut.get(R(root)) ?? "").startsWith(UNCLEAR_OPT_OUT);
 
   // ---- existing touches (instants) ----
   const touches = new Map<string, number[]>();
@@ -267,12 +241,18 @@ export function planWeek(input: PlanInput) {
   const pairText = (x: Row) => [x.r.requester!, x.r.target!].filter((_p, k) => !isOut(k ? x.tgt : x.req)).join(" → ") || "an intro";
 
   if (removals.length) {
-    const rids = removals.map((r) => r.intro_id ?? "").filter(Boolean);
+    const rids = removals.map(({ r }) => r.intro_id ?? "").filter(Boolean);
+    const unclear = removals.filter((x) => x.unclear);
+    const uids = unclear.map(({ r }) => r.intro_id ?? "").filter(Boolean);
+    const confirm = unclear.length ? ` (${unclear.length} need you to confirm who they refer to)` : "";
     cands.push({
       priority: 0, kind: "removal_requests", touch: false, due: today, recipients: [],
       render: () => ({
-        title: `Action ${removals.length} removal or opt-out request${removals.length > 1 ? "s" : ""}`, why_now: "Removal and opt-out requests are honoured immediately.",
-        intro_ids: rids, suggested_prompt: `Action the removal and opt-out requests in my ledger${rids.length ? ` (${rids.join(", ")})` : ""} and note them`,
+        title: `Action ${removals.length} removal or opt-out request${removals.length > 1 ? "s" : ""}${confirm}`,
+        why_now: "Removal and opt-out requests are honoured immediately."
+          + (unclear.length ? ` ${unclear.length === 1 ? "One note does" : `${unclear.length} notes do`} not say which person opted out, so both people in ${unclear.length === 1 ? "that intro are" : "those intros are"} held until you confirm.` : ""),
+        intro_ids: rids,
+        suggested_prompt: `Action the removal and opt-out requests in my ledger${rids.length ? ` (${rids.join(", ")})` : ""}${unclear.length ? ` and tell me who the opt-out note${unclear.length > 1 ? "s" : ""}${uids.length ? ` on ${uids.join(", ")}` : ""} refer${unclear.length > 1 ? "" : "s"} to` : ""}, and note them`,
       }),
     });
   }
@@ -462,12 +442,15 @@ export function planWeek(input: PlanInput) {
   }
   const items = kept.slice(0, o.max_items).map((k) => k.item);
   for (const { item } of kept.slice(o.max_items)) held.push({ type: "item", item: item.title, reason: `beyond the ${o.max_items}-item limit; run it next week or ask for it now` });
-  // Requesters whose consent asks were dropped because they opted out: the intro needs withdrawing, not asking.
-  for (const x of unsentAll) if (isOut(x.req)) held.push({ type: "item", item: `consent ask${x.r.intro_id ? ` for intro ${x.r.intro_id}` : ""}`, reason: "the requester opted out: withdraw the intro instead of asking" });
+  // Requesters whose consent asks were dropped because they opted out (or may have): the intro needs withdrawing or confirming, not asking.
+  for (const x of unsentAll) if (isOut(x.req)) held.push({
+    type: "item", item: `consent ask${x.r.intro_id ? ` for intro ${x.r.intro_id}` : ""}`,
+    reason: isUnclear(x.req) ? "an opt-out note on this intro does not say who it refers to: confirm before asking (both people are held)" : "the requester opted out: withdraw the intro instead of asking",
+  });
   const touched = new Set(kept.slice(0, o.max_items).flatMap(({ c }) => [...(keptBy.get(c) ?? [])]));
   return {
-    today, items, spacing_conflicts, held,
-    stats: { candidates: cands.length, items: items.length, people_touched: touched.size, opted_out: optedOut.size, moved: spacing_conflicts.length },
+    today, items, spacing_conflicts, held, needs_review,
+    stats: { candidates: cands.length, items: items.length, people_touched: touched.size, opted_out: optedOut.size, moved: spacing_conflicts.length, needs_review: needs_review.length },
     spacing: { spacing_days: o.spacing_days, min_gap_hours: o.min_gap_hours, rule: "one proactive touch per person in the week; touches tied to a dated event keep their slot, others move to the next allowed date" },
   };
 }

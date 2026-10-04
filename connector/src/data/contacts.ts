@@ -14,15 +14,24 @@ export const BARE_COUNTRY_CODES: readonly (readonly [string, number, number])[] 
 ];
 
 /*
- * Labels (a record's source, or an ID's own prefix such as "wa:") that say what an ID is. Distinctive
- * names count as a word anywhere in the label ("whatsapp-export"); generic or short ones only as the
- * whole label, separators ignored ("wa_id", "tel", "mobile"; never "mobile-app" or "tel-aviv").
+ * Labels (a record's source, or an ID's own prefix such as "wa:") that say what an ID is. Labels are
+ * read as whole words or segments ("mobile_phone", "WA group", "WhatsApp export"), never as substrings.
+ * Distinctive words count anywhere in the label; generic or short ones only as the whole label,
+ * separators ignored ("tel", "mobile"; never "mobile-app" or "tel-aviv-chapter"); and a qualifier plus
+ * a number word counts too ("mobile number", "cell no"). No country-code list is involved.
  */
-/** IDs under these labels are phone numbers. */
-export const PHONE_ID_WORDS: readonly string[] = ["whatsapp", "msisdn", "sms", "viber", "imessage"];
-export const PHONE_ID_LABELS: readonly string[] = [
-  "wa", "waid", "tel", "phone", "phones", "phonenumber", "telephone", "mobile", "mobilenumber", "cell", "cellphone", "text", "texts", "signal",
+/** IDs under a label containing any of these words are phone numbers. */
+export const PHONE_ID_WORDS: readonly string[] = [
+  "whatsapp", "wa", "waid", "msisdn", "sms", "mms", "phone", "phones", "phonenumber", "phonenumbers", "telephone", "cellphone", "mobilenumber",
+  "mobilephone", "viber", "imessage",
 ];
+/** Long distinctive stems that count even glued into one word ("WhatsAppExport", "msisdn_list"). */
+export const PHONE_ID_STEMS: readonly string[] = ["whatsapp", "msisdn", "telephone", "phonenumber", "cellphone", "mobilenumber", "mobilephone", "imessage"];
+/** IDs under exactly one of these labels (separators ignored) are phone numbers. */
+export const PHONE_ID_LABELS: readonly string[] = ["tel", "mobile", "cell", "text", "texts", "signal", "handy"];
+/** Generic words that mark a phone label only together with a number word: "mobile number", "cell no", "tel nr". */
+export const PHONE_ID_QUALIFIERS: readonly string[] = ["mobile", "cell", "tel", "telephone", "handy", "contact"];
+export const PHONE_ID_NUMBER_WORDS: readonly string[] = ["number", "numbers", "no", "num", "nr", "digits"];
 /** IDs under these labels are handles or profile slugs (contact details) unless they are opaque numeric IDs or URNs. */
 export const HANDLE_ID_WORDS: readonly string[] = ["linkedin", "telegram", "twitter", "instagram", "facebook", "tiktok", "bluesky", "mastodon", "snapchat"];
 export const HANDLE_ID_LABELS: readonly string[] = ["x", "threads", "ig", "fb", "tg"];

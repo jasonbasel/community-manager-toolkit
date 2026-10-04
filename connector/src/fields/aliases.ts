@@ -27,7 +27,7 @@ const r = (field: CanonicalField, confidence?: number, note?: string, inverted?:
 export const GENERIC_ALIASES: Readonly<Record<string, AliasRule>> = {
   // identity
   "name": r("name"), "full name": r("name"), "fullname": r("name"), "contact name": r("name"), "member name": r("name"),
-  "attendee name": r("name"), "guest name": r("name"), "your name": r("name"), "what is your name": r("name"), "what s your name": r("name"),
+  "attendee name": r("name"), "guest name": r("name"), "your name": r("name"), "what is your name": r("name"), "whats your name": r("name"),
   "your full name": r("name"), "names": r("name", 0.7),
   "first name": r("first_name"), "firstname": r("first_name"), "first": r("first_name", 0.7), "given name": r("first_name"),
   "forename": r("first_name"), "fname": r("first_name", 0.8),
@@ -115,6 +115,7 @@ export const IGNORED_HEADERS: Readonly<Record<string, string>> = {
   "lead source": "how they first arrived, not the record's source system",
   "original source": "how they first arrived, not the record's source system",
   "contact owner": "internal owner, not member data", "owner": "internal owner, not member data", "person owner": "internal owner",
+  "relationship owner": "internal owner, not member data", "record owner": "internal owner, not member data",
   "username": "chat handle, not a name (kept out of the directory)", "displayname": "chat display name; fullname is used for the name",
   "member rating": "based on email opens and clicks, which are not activity",
   "last open date": "email opens are not activity (privacy protection inflates them)",
@@ -160,11 +161,28 @@ export const CONTACT_PATTERNS: readonly RegExp[] = [
   /\b(eth address|solana address|wallet)\b/,
 ];
 
-/** Header patterns for sensitive personal data: listed in sensitive_columns and never used. */
+/**
+ * Header patterns for sensitive personal data: listed in sensitive_columns and never used. Whole words
+ * and specific phrases only ("Health status", "Diagnosis", "Relationship status"), so sector and CRM
+ * headers such as "Industry (e.g. Healthcare)", "Healthtech focus", "Diagnostics" or "Relationship owner"
+ * are not flagged.
+ */
 export const SENSITIVE_COLUMN_PATTERNS: readonly RegExp[] = [
-  /\b(gender|sex|pronouns|ethnicity|ethnic|race|religion|religious|faith|sexual orientation|sexuality|disability|disabilities|accessibility|access needs|dietary|diet|allergies|allergy|medical|health conditions?|date of birth|dob|birthday|birth date|age|nationality|marital|pregnan\w*|caste|political)\b/,
-  // Stems that reveal a sensitive attribute wherever they appear in a header ("Health status", "Relationship status", "Pregnancy").
-  /(?:health|medical|medicat|diagnos|relationship|marital|married|religio|ethnic|racial|sexual|disab|pregnan|maternity|impairment|politic)/,
+  /\b(?:gender|sex|pronouns|ethnicity|ethnic|race|religion|religious|faith|sexual orientation|sexuality|disability|disabilities|disabled|accessibility|access needs|dietary|diet|allergies|allergy|medical|date of birth|dob|birthday|birth date|age|nationality|marital|caste|political|politics)\b/,
+  /\bhealth (?:status|conditions?|issues?|problems?|needs?|info|information|details?|history|records?|data|notes?|declaration)\b/,
+  /\bmental health\b/,
+  /\bdiagnos(?:is|es|ed)\b/,
+  /\bdisabilit(?:y|ies)\b/,
+  /\bpregnan\w*/,
+  /\breligio\w*/,
+  /\bethnic\w*/,
+  /\bracial\b/,
+  /\bgender identity\b/,
+  /\bmarried\b/,
+  /\brelationship status\b/,
+  /\b(?:maternity|paternity)\b/,
+  /\bimpairments?\b/,
+  /\bpolitic\w*/,
 ];
 
 /** Words that show a row is a header row (a first row with none of them, made of names and organisations, is data). */

@@ -103,8 +103,10 @@ describe("value hints from sample rows", () => {
     const o = d("slack.csv", ["fullname", "title", "userid", "displayname"], [["A", "CEO at Hollowbrook Cyber", "U1", "a"], ["B", "Founder | Fernhill", "U2", "b"]]);
     expect(o.mapping.find((m) => m.column === "title")?.splits).toBe("role_at_organisation");
   });
-  it("finds an email column from its values", () => {
-    expect(fieldOf(d("x.csv", ["Name", "Contact"], [["A", "a@example.com"], ["B", "b@example.com"]]), "Contact")).toBe("email");
+  it("finds an email column from its values (an unknown header is named by position)", () => {
+    const o = d("x.csv", ["Name", "Contact"], [["A", "a@example.com"], ["B", "b@example.com"]]);
+    expect(o.mapping.find((m) => m.index === 2)).toMatchObject({ column: "column 2", field: "email" });
+    expect(JSON.stringify(o)).not.toContain("Contact");
   });
   it("never echoes contact details from sample rows", () => {
     const o = d("x.csv", ["Name", "Email", "Phone", "Consent"], [["A", "a@example.com", "07700 900100", "a@example.com"]]);
@@ -185,12 +187,65 @@ describe("values, sensitive headers and name rows (round-2 5)", () => {
     const headers = ["Name", "Health status", "Relationship status", "Religious community", "Ethnic background", "Sexual orientation", "Disability support", "Pregnancy", "Medical notes", "Marital"];
     const o = d("x.csv", headers, [["A", "Diabetic", "Divorced", "Parish", "Irish", "Gay", "Wheelchair", "Pregnant", "Asthma", "Married"]]);
     expect(o.sensitive_columns.map((c) => c.column)).toEqual(headers.slice(1));
+    expect(o.sensitive_columns.map((c) => c.index)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(JSON.stringify(o)).not.toMatch(/Diabetic|Divorced|Parish|Irish|Gay|Wheelchair|Pregnant|Asthma|Married/);
+  });
+  it("flags sensitive headers by whole words and phrases, not by stems inside sector or CRM words (round-3 7)", () => {
+    const sensitive = ["Health status", "Health condition", "Mental health", "Medical notes", "Diagnosis", "Diagnosed with", "Disability", "Disabilities", "Pregnancy", "Pregnant?", "Religion",
+      "Religious affiliation", "Ethnicity", "Ethnic origin", "Race", "Racial background", "Sexual orientation", "Gender identity", "Gender", "Marital status", "Married", "Relationship status",
+      "Maternity leave", "Hearing impairment", "Political party", "Date of birth", "Dietary requirements", "Race day volunteer?" /* "race" as a word is flagged: accepted false positive */];
+    const flagged = d("x.csv", ["Name", ...sensitive]);
+    expect(flagged.sensitive_columns.map((c) => c.column)).toEqual(sensitive);
+    const fine = ["Industry (e.g. Healthcare)", "Healthtech focus", "Diagnostics", "Relationship owner", "Relationship strength", "Medtech sector", "Agency", "Stage", "Sector", "Racing team"];
+    const o = d("x.csv", ["Name", ...fine]);
+    expect(o.sensitive_columns).toEqual([]);
+    expect(fieldOf(o, "Industry (e.g. Healthcare)")).toBe("tags");
+    expect(o.unmapped.find((u) => u.column === "Relationship owner")?.reason).toMatch(/internal owner/);
   });
   it("masks a first row of names and organisations that has nothing reading as a column name", () => {
     const o = d("export.csv", ["Jane Doe", "Acme Ltd", "CEO", "London"], [["Bo Chan", "Globex Inc", "CTO", "Leeds"]]);
     expect(JSON.stringify(o)).not.toMatch(/Jane|Doe|Acme|London|Bo Chan|Globex|Leeds/);
     expect(o.warnings.join(" ")).toMatch(/no header row/);
     for (const headers of [["Project Lead", "Budget Owner", "Kick Off"], ["Cohort", "Mentor", "Pod"], ["Full Name", "Acme Ltd"]]) expect(d("x.csv", headers).warnings.join(" "), headers.join()).not.toMatch(/no header row/);
+  });
+});
+
+describe("only known header vocabulary is ever echoed (round-3 6)", () => {
+  it("names every column outside the vocabulary by position, with its index, even when the row passes as a header row", () => {
+    // Two known headers keep this row from being judged headerless; the three cells that are really data are still never echoed.
+    const o = d("export.csv", ["Full Name", "Acme Ltd", "Jane Doe", "Favourite tool", "Email"], [["Bo Chan", "Globex", "Cleo Dunn", "Linear", "bo@example.org"]]);
+    const s = JSON.stringify(o);
+    for (const leak of ["Acme", "Jane", "Doe", "Favourite", "example", "Bo Chan", "Globex", "Cleo", "Linear"]) expect(s, leak).not.toContain(leak);
+    expect(o.warnings.join(" ")).not.toMatch(/no header row/);
+    const all = [...o.mapping, ...o.unmapped, ...o.contact_columns, ...o.sensitive_columns].sort((a, b) => a.index - b.index);
+    expect(all.map((c) => [c.index, c.column])).toEqual([[1, "Full Name"], [2, "column 2"], [3, "column 3"], [4, "column 4"], [5, "Email"]]);
+    // With a contact detail in the row, the whole row is data and every column is positional.
+    const data = d("export.csv", ["Full Name", "Acme Ltd", "jane@example.com"], [["Bo Chan", "Globex", "bo@example.org"]]);
+    expect([...data.mapping, ...data.unmapped].map((c) => c.column).sort()).toEqual(["column 1", "column 2", "column 3"]);
+    expect(JSON.stringify(data)).not.toMatch(/Full Name|Acme|example/);
+  });
+  it("names unknown columns by position when the rest of the row is real headers", () => {
+    const o = d("members.csv", ["Full Name", "Company", "Chapter", "Favourite tool", "Zebedee Quarrington"], [["A", "Acme", "London", "Notion", "x"]]);
+    expect(JSON.stringify(o)).not.toMatch(/Chapter|Favourite|Zebedee|Quarrington/);
+    expect(o.mapping.map((m) => [m.index, m.column, m.field])).toEqual([[1, "Full Name", "name"], [2, "Company", "organisation"]]);
+    expect(o.unmapped.map((u) => [u.index, u.column, u.reason])).toEqual([[3, "column 3", "no matching field"], [4, "column 4", "no matching field"], [5, "column 5", "no matching field"]]);
+    expect(o.warnings.join(" ")).not.toMatch(/no header row/);
+  });
+  it("echoes headers that are in the vocabulary: aliases, platform columns, contact, sensitive and question phrases", () => {
+    const headers = ["Record ID", "Company Name", "Job Title", "Phone Number", "Gender", "Marketing contact status", "What are you hoping to get from the community?", "Opens", "Lead Source", "Name", "Name"];
+    const o = d("hubspot.csv", headers);
+    const all = [...o.mapping, ...o.unmapped, ...o.contact_columns, ...o.sensitive_columns].sort((a, b) => a.index - b.index);
+    expect(all.map((c) => c.column)).toEqual([...headers.slice(0, 10), "Name (2)"]);
+    expect(all.map((c) => c.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  });
+  it("platform evidence never repeats a header that only matched a pattern", () => {
+    const o = d("pipedrive.csv", ["Person - ID", "Person - Name", "Person - Organization", "Person - Marketing status", "Person - Zebedee's hobby", "Person - Email - Work"]);
+    expect(o.platform_guess.id).toBe("pipedrive");
+    expect(JSON.stringify(o)).not.toMatch(/Zebedee|hobby/);
+    expect(o.unmapped.find((u) => u.index === 5)?.column).toBe("column 5");
+  });
+  it("a date, number or yes/no header cell is never echoed even if it reads like a word", () => {
+    const o = d("x.csv", ["Name", "Yes", "2026-09-30", "42"]);
+    expect(JSON.stringify(o)).not.toMatch(/Yes|2026|42/);
   });
 });

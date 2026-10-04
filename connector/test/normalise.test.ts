@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  displayOrg, emailParts, findEmails, findPhones, findSensitive, firstNameRelation, idContactKind, isEmailLike, isPhoneLike, isPlaceholderName, jaroWinkler,
-  nameKey, orgKey, parseDate, parseInstant, scrubContacts, tidyName, toList,
+  displayOrg, emailParts, findEmails, findPhones, findSensitive, firstNameRelation, idContactKind, isEmailLike, isPhoneLabel, isPhoneLike, isPlaceholderName, jaroWinkler,
+  nameKey, orgKey, parseDate, parseInstant, plain, scrubContacts, tidyName, toList,
 } from "../src/text/normalise.js";
 import { rng } from "./helpers/synthetic.js";
 import { keywords, singular } from "../src/text/keywords.js";
@@ -154,6 +154,37 @@ describe("phone numbers (review finding 9)", () => {
     expect(idContactKind("447700900123", { labels: ["mobile-app"] })).toBeNull();
     expect(idContactKind("@jane", { handles: true })).toBe("handle");
     expect(idContactKind("@jane")).toBeNull();
+  });
+});
+
+describe("Unicode name keys (round-3 4)", () => {
+  it("keeps the letters of every script, folds case and accents, and drops apostrophes the same way everywhere", () => {
+    expect(nameKey("李明")).toBe("李明");
+    expect(nameKey("김민준")).toBe("김민준");
+    expect(nameKey("Αλέξανδρος Παπαδόπουλος")).toBe("αλέξανδρος παπαδόπουλος"); // marks on non-Latin letters stay: they can be the letter
+    expect(nameKey("Дмитрий Иванов")).toBe("дмитрий иванов");
+    expect(nameKey("Nguyễn Văn An")).toBe("nguyen van an");
+    expect(nameKey("محمد العلي")).toBe("محمد العلي");
+    expect(nameKey("Zoë O'Brien")).toBe("zoe obrien");
+    expect(nameKey("Niamh O’Brien")).toBe(nameKey("niamh obrien"));
+    expect(nameKey("D'Angelo")).toBe("dangelo");
+    expect(nameKey("Saoirse Delacroix-Burke")).toBe("saoirse delacroix burke");
+    expect(nameKey("Minh Do")).toBe("minh do");
+    expect(plain("What's your name?")).toBe("whats your name");
+    expect(plain("Halden & Moss")).toBe("halden and moss");
+    expect(nameKey("☺")).toBe("");
+    expect(isPlaceholderName(nameKey("李明"))).toBe(false);
+  });
+});
+
+describe("phone labels are read as whole words or segments (round-3 5)", () => {
+  it("recognises phone channels in prefixes and source names", () => {
+    for (const l of ["whatsapp", "WhatsApp", "WhatsApp export", "WA group", "wa", "wa_id", "waid", "mobile_phone", "phone_number", "Phone numbers", "tel", "Tel", "msisdn", "msisdn_list",
+      "sms", "SMS list", "mobile", "mobile number", "cell no", "contact number", "telephone", "WhatsAppExport", "iMessage thread", "viber", "signal", "texts"]) expect(isPhoneLabel(l), l).toBe(true);
+  });
+  it("never matches generic words inside other labels, nor non-phone platforms", () => {
+    for (const l of ["mobile-app", "tel-aviv-chapter", "slack-threads", "hubspot", "discord", "slack", "telegram", "linkedin", "member number", "contact", "contacts", "id", "ref",
+      "seattle", "textile-group", "signals-newsletter", "", "application-form"]) expect(isPhoneLabel(l), l).toBe(false);
   });
 });
 

@@ -15,7 +15,10 @@ export interface DetectInput {
   sample_rows?: (string[] | Record<string, unknown>)[];
 }
 export interface MappingEntry {
+  /** The header text when it is in the known header vocabulary, otherwise "column N" (1-based) so data is never echoed. */
   column: string;
+  /** 1-based position of the column in the export. */
+  index: number;
   field: CanonicalField;
   confidence: number;
   reason: string;
@@ -26,7 +29,7 @@ export interface MappingEntry {
   /** Sample values seen in a consent or status column that are not consent or status words: counted, never shown. */
   unlisted_values?: number;
 }
-export interface ColumnNote { column: string; reason: string }
+export interface ColumnNote { column: string; index: number; reason: string }
 export interface DetectOutput {
   source_name: string;
   platform_guess: { id: string; name: string; confidence: number; evidence: string[] };
@@ -42,14 +45,15 @@ const round = (n: number) => Math.round(n * 100) / 100;
 const hkey = (h: string) => plain(h) || h.trim();
 const yes = new Set(OPT_IN_YES), no = new Set(OPT_IN_NO);
 
-function scorePlatform(p: Platform, keys: string[], raws: string[], sourceName: string) {
+/** Evidence names columns by their label (header text only when it is known vocabulary, else "column N"). */
+function scorePlatform(p: Platform, keys: string[], raws: string[], labels: string[], sourceName: string) {
   let score = 0;
   const evidence: string[] = [];
   for (const s of p.signals) {
-    if (s.h && keys.includes(s.h)) { score += s.w; evidence.push(raws[keys.indexOf(s.h)]); }
+    if (s.h && keys.includes(s.h)) { score += s.w; evidence.push(labels[keys.indexOf(s.h)]); }
     else if (s.raw && raws.includes(s.raw)) { score += s.w; evidence.push(s.raw); }
     else if (s.re) {
-      const hits = raws.filter((_r, i) => s.re!.test(keys[i]));
+      const hits = labels.filter((_r, i) => s.re!.test(keys[i]));
       score += Math.min(hits.length, 5) * s.w;
       evidence.push(...hits.slice(0, 3));
     }
@@ -79,7 +83,7 @@ function containsField(k: string): { field: CanonicalField; confidence: number; 
   const t = new Set(k.split(" "));
   const has = (...w: string[]) => w.some((x) => t.has(x));
   if (has("opt", "optin", "consent", "gdpr", "subscribed", "unsubscribed", "subscription")) return { field: "opted_in", confidence: 0.6, inverted: has("out", "unsubscribed") };
-  if (has("email", "e")) return k.includes("mail") ? { field: "email", confidence: 0.7 } : null;
+  if (has("email") || (has("e") && has("mail"))) return { field: "email", confidence: 0.7 }; // "e-mail"; a bare "e" (as in "e.g.") proves nothing
   if (has("company", "organisation", "organization", "employer", "org")) return { field: "organisation", confidence: 0.7 };
   if (has("title", "role", "position", "job")) return { field: "role", confidence: 0.65 };
   if (has("city", "location", "town")) return { field: "location", confidence: 0.65 };
@@ -153,19 +157,25 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
   const given = input.headers.map((h) => String(h ?? "").trim());
   given.forEach((h, i) => { if (!h) throw new InputError(`headers[${i}] is empty; pass the header text exactly as it appears in the export`); });
   const sourceName = isEmailLike(input.source_name) || isPhoneLike(input.source_name) ? "(source name not shown: it looks like a contact detail)" : input.source_name;
+  // The known header vocabulary: generic aliases, deliberately ignored headers, question phrases, field words, contact,
+  // sensitive and engagement patterns, and platform columns. Only a header in it is ever echoed back.
+  const knownVocabulary = (k: string, raw: string) => !!GENERIC_ALIASES[k] || !!IGNORED_HEADERS[k] || phraseField(k) !== null || containsField(k) !== null
+    || [...CONTACT_PATTERNS, ...SENSITIVE_COLUMN_PATTERNS, ...NOT_ACTIVITY_PATTERNS].some((re) => re.test(k))
+    || PLATFORMS.some((p) => !!p.overrides?.[k] || p.signals.some((sg) => sg.h === k || sg.raw === raw));
   // A header row that holds a contact detail, is mostly numbers and dates, or is names and organisations with nothing
   // that reads as a column name, is the first data row of an export with no header row: never echo it. Columns are
   // then named by position and that row is read as a sample.
-  const knownHeader = (k: string) => !!GENERIC_ALIASES[k] || !!IGNORED_HEADERS[k] || phraseField(k) !== null || containsField(k) !== null
-    || k.split(" ").some((t) => headerWords.has(t)) || [...CONTACT_PATTERNS, ...SENSITIVE_COLUMN_PATTERNS, ...NOT_ACTIVITY_PATTERNS].some((re) => re.test(k))
-    || PLATFORMS.some((p) => !!p.overrides?.[k] || p.signals.some((sg) => sg.h === k));
+  const knownHeader = (k: string, raw: string) => knownVocabulary(k, raw) || k.split(" ").some((t) => headerWords.has(t));
   const headerless = given.some(contactLike) || given.filter(dataLike).length >= Math.max(2, Math.ceil(given.length / 2))
-    || (!given.some((h) => knownHeader(hkey(h))) && given.some((h) => personLike(h) || orgLike(h))
+    || (!given.some((h) => knownHeader(hkey(h), h)) && given.some((h) => personLike(h) || orgLike(h))
       && given.filter((h) => personLike(h) || orgLike(h) || dataLike(h)).length >= Math.ceil(given.length / 2));
-  const raws = headerless ? given.map((_h, i) => `column ${i + 1}`) : given;
+  // Column labels: the header text only when it is known vocabulary and not a data value; every other column is
+  // "column N" (1-based), so a cell of a data row mistaken for a header row can never be repeated.
+  const labels = given.map((h, i) => (!headerless && knownVocabulary(hkey(h), h) && !dataLike(h) && !contactLike(h) ? h : `column ${i + 1}`));
+  const raws = headerless ? labels : given;
   // Disambiguate duplicate headers so every column is reported once.
   const seen = new Map<string, number>();
-  const cols = raws.map((h) => { const n = (seen.get(h) ?? 0) + 1; seen.set(h, n); return n > 1 ? `${h} (${n})` : h; });
+  const cols = labels.map((h) => { const n = (seen.get(h) ?? 0) + 1; seen.set(h, n); return n > 1 ? `${h} (${n})` : h; });
   const keys = raws.map(hkey);
   const rows = [...(headerless ? [given] : []), ...(input.sample_rows ?? [])].map((row, ri) => {
     if (Array.isArray(row)) {
@@ -179,7 +189,7 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
   // ---- platform ----
   let best: { p: Platform | null; conf: number; evidence: string[] } = { p: null, conf: 0, evidence: [] };
   for (const p of headerless ? [] : PLATFORMS) {
-    const s = scorePlatform(p, keys, raws, input.source_name);
+    const s = scorePlatform(p, keys, raws, labels, input.source_name);
     if (s.conf > best.conf) best = { p, conf: s.conf, evidence: s.evidence };
   }
   const questionCols = keys.filter((k) => phraseField(k) !== null).length;
@@ -187,9 +197,9 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
   if (headerless) platform_guess = { id: GENERIC_SHEET.id, name: GENERIC_SHEET.name, confidence: 0.2, evidence: ["the first row looks like data, not column names"] };
   else if (best.p && best.conf >= 0.5) platform_guess = { id: best.p.id, name: best.p.name, confidence: round(best.conf), evidence: best.evidence.slice(0, 8) };
   else if (keys.some((k) => /\b(approval status|registered at|ticket|checked in|rsvp|attendee)\b/.test(k)))
-    platform_guess = { id: GENERIC_EVENT.id, name: GENERIC_EVENT.name, confidence: 0.55, evidence: raws.filter((_r, i) => /\b(approval status|registered at|ticket|checked in|rsvp|attendee)\b/.test(keys[i])).slice(0, 4) };
+    platform_guess = { id: GENERIC_EVENT.id, name: GENERIC_EVENT.name, confidence: 0.55, evidence: labels.filter((_r, i) => /\b(approval status|registered at|ticket|checked in|rsvp|attendee)\b/.test(keys[i])).slice(0, 4) };
   else if (questionCols >= 2 || (questionCols >= 1 && keys.some((k) => /\b(submitted at|timestamp|submission date)\b/.test(k))))
-    platform_guess = { id: GENERIC_FORM.id, name: GENERIC_FORM.name, confidence: 0.6, evidence: [`${questionCols} question-style column(s)`, ...raws.filter((_r, i) => /\b(submitted at|timestamp|submission date)\b/.test(keys[i]))] };
+    platform_guess = { id: GENERIC_FORM.id, name: GENERIC_FORM.name, confidence: 0.6, evidence: [`${questionCols} question-style column(s)`, ...labels.filter((_r, i) => /\b(submitted at|timestamp|submission date)\b/.test(keys[i]))] };
   else platform_guess = { id: GENERIC_SHEET.id, name: GENERIC_SHEET.name, confidence: 0.4, evidence: ["no platform-specific columns"] };
   const plat = best.p && best.conf >= 0.5 ? best.p : null;
 
@@ -202,15 +212,15 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
   let notActivity = false;
 
   keys.forEach((k, i) => {
-    const column = cols[i];
+    const column = cols[i], index = i + 1;
     if (SENSITIVE_COLUMN_PATTERNS.some((re) => re.test(k))) {
-      sensitive_columns.push({ column, reason: "may reveal a sensitive personal attribute; never used for matching, tags or reasons" });
+      sensitive_columns.push({ column, index, reason: "may reveal a sensitive personal attribute; never used for matching, tags or reasons" });
       return;
     }
     const ov = plat?.overrides?.[k];
     if (ov) {
-      if (ov.field === null) { unmapped.push({ column, reason: ov.note }); return; }
-      const e: MappingEntry = { column, field: ov.field, confidence: ov.confidence ?? 0.9, reason: ov.note ?? `${plat!.name.split(" ")[0]} column` };
+      if (ov.field === null) { unmapped.push({ column, index, reason: ov.note }); return; }
+      const e: MappingEntry = { column, index, field: ov.field, confidence: ov.confidence ?? 0.9, reason: ov.note ?? `${plat!.name.split(" ")[0]} column` };
       if (ov.inverted) e.inverted = true;
       if ("values" in ov && ov.values) e.values = { ...ov.values };
       mapping.push(e);
@@ -218,26 +228,26 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
     }
     if (IGNORED_HEADERS[k]) {
       if (NOT_ACTIVITY_PATTERNS.some((re) => re.test(k))) notActivity = true;
-      unmapped.push({ column, reason: IGNORED_HEADERS[k] });
+      unmapped.push({ column, index, reason: IGNORED_HEADERS[k] });
       return;
     }
     const g: AliasRule | undefined = GENERIC_ALIASES[k];
     if (g) {
-      const e: MappingEntry = { column, field: g.field, confidence: g.confidence ?? 0.9, reason: g.note ?? "standard column name" };
+      const e: MappingEntry = { column, index, field: g.field, confidence: g.confidence ?? 0.9, reason: g.note ?? "standard column name" };
       if (g.inverted) e.inverted = true;
       mapping.push(e);
       return;
     }
-    if (CONTACT_PATTERNS.some((re) => re.test(k))) { contact_columns.push({ column, reason: "contact detail or online identifier; stays in the source system" }); return; }
-    if (NOT_ACTIVITY_PATTERNS.some((re) => re.test(k))) { unmapped.push({ column, reason: "email opens and clicks are not member activity" }); notActivity = true; return; }
+    if (CONTACT_PATTERNS.some((re) => re.test(k))) { contact_columns.push({ column, index, reason: "contact detail or online identifier; stays in the source system" }); return; }
+    if (NOT_ACTIVITY_PATTERNS.some((re) => re.test(k))) { unmapped.push({ column, index, reason: "email opens and clicks are not member activity" }); notActivity = true; return; }
     const ph = phraseField(k);
-    if (ph) { mapping.push({ column, ...ph }); return; }
+    if (ph) { mapping.push({ column, index, ...ph }); return; }
     const c = containsField(k);
-    if (c) { mapping.push({ column, field: c.field, confidence: c.confidence, reason: "column name contains a field word", ...(c.inverted ? { inverted: true } : {}) }); return; }
+    if (c) { mapping.push({ column, index, field: c.field, confidence: c.confidence, reason: "column name contains a field word", ...(c.inverted ? { inverted: true } : {}) }); return; }
     const vals = colValues(i);
-    if (vals.length && vals.filter((v) => isEmailLike(v)).length >= Math.ceil(vals.length * 0.6)) { mapping.push({ column, field: "email", confidence: 0.8, reason: "values are email addresses; identity only" }); return; }
-    if (vals.length && vals.filter((v) => isPhoneLike(v)).length >= Math.ceil(vals.length * 0.6)) { contact_columns.push({ column, reason: "values are phone numbers" }); return; }
-    unmapped.push({ column, reason: /\?\s*$/.test(raws[i]) ? "free-text question that is not about asks, offers or a bio" : "no matching field" });
+    if (vals.length && vals.filter((v) => isEmailLike(v)).length >= Math.ceil(vals.length * 0.6)) { mapping.push({ column, index, field: "email", confidence: 0.8, reason: "values are email addresses; identity only" }); return; }
+    if (vals.length && vals.filter((v) => isPhoneLike(v)).length >= Math.ceil(vals.length * 0.6)) { contact_columns.push({ column, index, reason: "values are phone numbers" }); return; }
+    unmapped.push({ column, index, reason: /\?\s*$/.test(given[i]) ? "free-text question that is not about asks, offers or a bio" : "no matching field" });
   });
 
   // ---- one column per single-value field ----
@@ -249,14 +259,13 @@ export function detectMemberFields(input: DetectInput): DetectOutput {
     for (const e of es) {
       if (e === keep) continue;
       mapping.splice(mapping.indexOf(e), 1);
-      unmapped.push({ column: e.column, reason: `also looks like ${field}; '${keep.column}' is used for it` });
+      unmapped.push({ column: e.column, index: e.index, reason: `also looks like ${field}; '${keep.column}' is used for it` });
     }
   }
 
   // ---- value hints from the sample rows ----
-  const idx = (column: string) => cols.indexOf(column);
   for (const e of mapping) {
-    const vals = colValues(idx(e.column));
+    const vals = colValues(e.index - 1);
     if (e.field === "joined" || e.field === "last_active") {
       const f = dateFormat(vals);
       if (f) e.date_format = f;

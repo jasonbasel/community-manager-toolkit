@@ -8,7 +8,7 @@ import type { DraftOutput } from "./draft.js";
 import type { ImpactOutput, Rate } from "./impact.js";
 import type { MergeOutput } from "./merge.js";
 import type { PairOutput } from "./pair.js";
-import type { PlanOutput } from "./plan.js";
+import { UNCLEAR_OPT_OUT, type PlanOutput } from "./plan.js";
 import type { SegmentOutput } from "./segment.js";
 
 const p = (r: Rate) => `${r.pct}% (${r.num}/${r.den})`;
@@ -111,8 +111,14 @@ export function summarisePlan(o: PlanOutput): string {
   } else lines.push("Spacing check: no conflicts.");
   const heldItems = o.held.filter((h) => h.type === "item");
   if (heldItems.length) lines.push(`Held back: ${heldItems.map((h) => `${h.item} (${h.reason})`).join("; ")}.`);
-  const opted = o.held.filter((h) => h.type === "touch" && /opted out/.test(h.reason));
+  const opted = o.held.filter((h) => h.type === "touch" && h.reason.startsWith("opted out"));
   if (opted.length) lines.push(`Not contacted (opted out): ${[...new Set(opted.map((h) => h.person))].join(", ")}.`);
+  const unclear = o.held.filter((h) => h.type === "touch" && h.reason.startsWith(UNCLEAR_OPT_OUT));
+  if (unclear.length) lines.push(`Held, ${UNCLEAR_OPT_OUT}: ${[...new Set(unclear.map((h) => h.person))].join(", ")}.`);
+  if (o.needs_review.length) {
+    const shown = o.needs_review.slice(0, 20);
+    lines.push(`Ledger rows to confirm (the note records an opt-out or removal request but not who it refers to; both people are held): ${shown.map((r) => `${r.intro_id ?? `row ${r.row + 1}`} (${r.requester} → ${r.target})`).join("; ")}${more(o.needs_review.length, shown.length)}`);
+  }
   return lines.join("\n");
 }
 

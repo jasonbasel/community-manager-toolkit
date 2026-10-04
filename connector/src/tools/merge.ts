@@ -149,17 +149,20 @@ export function mergeMemberRecords(input: MergeInput) {
     // Source IDs that are really contact details (WhatsApp numbers, email addresses, profile links, handles) are dropped, never echoed.
     const ids: string[] = [];
     let dropped = false;
-    const addId = (raw: unknown, prefixed: boolean) => {
+    const addId = (raw: unknown, listed: boolean) => {
       const s = raw == null ? "" : String(raw).trim();
       if (!s) return;
-      const colon = prefixed ? s.indexOf(":") : -1;
+      // "label:value" is read in source_id and in source_ids alike, so "mobile_phone:447…" is judged by its own label (a URN is one value).
+      const colon = /^urn:/i.test(s) ? -1 : s.indexOf(":");
       const prefix = colon > 0 ? s.slice(0, colon) : "", value = colon >= 0 ? s.slice(colon + 1) : s;
-      // Judged by the ID's own prefix when it names a platform ("wa:", "linkedin:", "slack:"); otherwise (no prefix, or a generic one
-      // such as "id:") by the record's source as well. The whole entry is checked for emails and links (they contain ":").
-      const platformPrefix = prefix && (isPhoneLabel(prefix) || isHandleLabel(prefix) || sourceKind(sourceLabel(prefix)) !== "other");
-      const labels = platformPrefix ? [prefix] : [prefix, source].filter(Boolean);
+      // A prefix that names a platform or a channel ("wa:", "phone_number:", "linkedin:", "slack:") is judged on its own; any other ID
+      // (no prefix, or a generic one such as "id:") is judged by the record's source label as well, so every ID of a "WhatsApp export"
+      // or "sms" record is dropped. Labels are matched as whole words, never a country-code guess. The whole entry is checked for
+      // emails and links (they contain ":").
+      const own = !!prefix && (isPhoneLabel(prefix) || isHandleLabel(prefix) || sourceKind(sourceLabel(prefix)) !== "other" || sourceLabel(prefix) === source);
+      const labels = own ? [prefix] : [prefix, source].filter(Boolean);
       if (isEmailLike(s) || isUrlLike(s) || idContactKind(value, { labels, handles: true }) || (prefix && idContactKind(prefix))) { dropped = true; return; }
-      ids.push(colon >= 0 ? s : `${source}:${s}`);
+      ids.push(colon >= 0 && (listed || own) ? s : `${source}:${s}`);
     };
     addId(r.source_id, false);
     for (const x of r.source_ids ?? []) addId(x, true);

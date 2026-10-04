@@ -138,7 +138,8 @@ Screen every intro request before searching for candidates.
   or to anyone who has opted out.
 - Non-member event guests get event messages only, never onboarding or re-engagement.
 - Apply the Community profile's "who can be messaged" rule and the member directory's
-  `opted_in` column. If opt-in status is still unknown, ask the manager before drafting.
+  `opted_in` column. If opt-in status is unknown, you may still draft (drafting isn't
+  sending): mark the draft "check opt-in before sending" and ask the manager to confirm.
 - An email opt-out flag that is off ("Email Opt Out = false", subscribed to marketing)
   only means email isn't refused. It isn't consent for WhatsApp, SMS or other channels:
   record `opted_in` as `unknown` unless there's a recorded opt-in, and say so.

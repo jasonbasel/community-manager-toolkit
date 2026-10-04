@@ -1,6 +1,6 @@
 ---
 name: member-directory
-description: "Member directory and member data clean-up (merge, de-duplicate, enrich, fill in what people want and offer from a CRM export, form or group chat) for community managers. Use this skill whenever someone shares a member or contact export (a CRM such as Salesforce, HubSpot, Attio, Pipedrive, Affinity or Zoho, a spreadsheet or Notion table, an application form, an email tool list, or a Slack, Discord or WhatsApp export) and wants member records combined, cleaned or filled in: filling in what people want and can offer from chats, forms or notes, building or updating a member directory, merging or de-duplicating sources, finding profile gaps, or working out who is in the community. It holds the matching rules (never merge uncertain matches), inferred-field labelling, the rule that phone numbers and emails stay out, and how to treat chat content. Maps fields with one confirmation, reports coverage and gaps with profile-ask drafts, and writes the directory to Notion, Google Sheets, Airtable or a CSV."
+description: "Member directory and member data clean-up for community managers. Use this skill whenever someone shares a member or contact export (a CRM such as Salesforce, HubSpot, Attio, Pipedrive, Affinity or Zoho, a spreadsheet or Notion table, an application form, an email tool list, or a Slack, Discord or WhatsApp export) and wants member records combined, cleaned, enriched or filled in, for example 'use my Salesforce export and our group chat to fill in what people want and offer', building or updating a member directory, merging or de-duplicating sources, finding profile gaps, or working out who is in the community. It holds the matching rules (never merge uncertain matches), inferred-field labelling, the rule that phone numbers and emails stay out, and how to treat chat content. Maps fields with one confirmation, reports coverage and gaps with profile-ask drafts, and writes the directory to Notion, Google Sheets, Airtable or a CSV."
 ---
 
 # Member Directory
@@ -122,8 +122,8 @@ give a gap plan:
 - **Profile asks** for the members who matter most right now (guests at an event in the
   next 14 days, new members, people in open intros): template 14 in
   `references/message-craft.md`, formatted for the profile's channel, to opted-in members
-  only, within spacing. Default batch: 10. Write the first two in full; list the rest
-  by name.
+  only, within spacing. Default batch: 10. Always write the first two in full, even if opt-in is
+  unknown (mark them "check opt-in before sending"); list the rest by name.
 - **Two form questions**, if the application or registration form doesn't ask them yet: "What are you hoping
   to get from [community]?" and "What could you help another [member] with?". Draft the
   wording; change the form only if asked.

@@ -94,3 +94,14 @@ describe("regression review of 63d607b", () => {
     for (const l of ["whatsapp-chat-44-7700-900311", "WhatsApp_Chat_07700_900311", "Chat - 07700 900311 - 30.09.2026.txt"]) expect(labelHasContact(l), l).toBe(true);
   });
 });
+
+describe("genuine opt-outs survive the widened reporting canceller", () => {
+  it("instructions and refusals signal", () => {
+    for (const n of ["no longer wants to be contacted", "not to be contacted", "doesn't want messages", "won't accept intros", "has not consented to contact",
+      "She no longer wishes to receive messages", "Please do not message her", "asked not to be emailed", "No further contact", "Never contact again",
+      "does not want any more intros", "She has said she doesn't want to be messaged", "Do not reply-all her into intros", "never opted in"]) expect(signal(n), n).toBe(true);
+  });
+  it("reports stay silent", () => {
+    for (const n of ["Hasn't replied to the intro yet", "Did not respond to the consent ask", "Email bounced, number not valid", "Not responding to emails"]) expect(signal(n), n).toBe(false);
+  });
+});

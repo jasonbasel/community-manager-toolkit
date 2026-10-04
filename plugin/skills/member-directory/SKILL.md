@@ -106,7 +106,8 @@ Where asks or offers are empty, read bios, form answers, Slack or Discord intro 
 meeting summaries for what the member wants and can offer. Write one line each in your
 own words, record the field and its source in `inferred_fields`, and never invent or
 quote. Professional content only (`references/guardrails.md` §5). Nothing to go on: leave
-it blank.
+it blank. Skip personal or sensitive messages silently: never say you skipped one, whose it
+was or what it was about, and never turn it into a note or an availability flag.
 
 ## Step 7: Coverage and gaps
 

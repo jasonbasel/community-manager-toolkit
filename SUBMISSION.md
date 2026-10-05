@@ -154,3 +154,11 @@ Update the links, then redeploy the connector, because the pages are served from
 - Claude: the developer page shows installs and usage; later commits on `main` are picked up automatically (bump `version` each release). Connector changes go live with `gcloud run deploy`.
 - ChatGPT: re-upload a new ZIP per version.
 - Support: GitHub Issues and jason@commonos.ai.
+
+## Open legal items (not blocking Phase 1)
+
+Approved 5 Oct 2026: privacy and terms as drafted, naming Google Cloud (London) as host and disclosing its 30-day request logs.
+Still to decide, before Phase 2 stores any member data or once CommonOS Ltd exists:
+- whether CommonOS acts as a data processor for connector data, and the data processing agreement to offer;
+- the ICO data protection fee position;
+- switching "operated by Jason Basel as an individual" to CommonOS Ltd on the pages and listings.
